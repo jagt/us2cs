@@ -33,6 +33,20 @@ class CompilerBuilder
     public bool Execute { get; set; }
     public bool Debug { get; set; }
 
+    public String UnityProjectRoot { get; set; }
+
+    private Compiler _compiler;
+    public Compiler Get
+    {
+        get
+        {
+            var tmp = _compiler;
+            _compiler = null;
+            return tmp;
+        }
+    }
+
+
     public CompilerBuilder()
     {
         References = new List<string>();
@@ -54,8 +68,10 @@ class CompilerBuilder
     // default compiler options from Unity 4.5, can be seen in Editor.log when there's
     // error in the code
     // unityLongVersion : UNITY_4_5_2
-    public void SetupUnityProject(string projectRoot, string[] sourceFiles, string unityInstallation = "C:/Program Files (x86)/Unity", string unityLongVersion = "UNITY_4_5_2")
+    public CompilerBuilder SetupUnityProject(string projectRoot, string[] sourceFiles, string unityInstallation = "C:/Program Files (x86)/Unity", string unityLongVersion = "UNITY_4_5_2")
     {
+        UnityProjectRoot = projectRoot;
+
         OutputType = CompilerOutputType.Library;
         Imports.Add("UnityEngine");
         Imports.Add("System.Collections");
@@ -130,10 +146,10 @@ class CompilerBuilder
             }
         }
 
-        return;
+        return this;
     }
 
-    public Compiler BuildCompiler()
+    public CompilerBuilder BuildCompiler()
     {
         var compiler = new Compiler();
 
@@ -209,8 +225,19 @@ class CompilerBuilder
                 );
         }
 
-        return compiler;
+        _compiler = compiler;
+
+        return this;
     }
+
+    public CompilerBuilder AdjustWriteCSharpPipeline()
+    {
+        _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
+        _compiler.Parameters.Pipeline.Add(new WriteCSharp(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_output")));
+
+        return this;
+    }
+
 }
 
 }

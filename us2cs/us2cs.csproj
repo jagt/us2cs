@@ -75,7 +75,9 @@
     <Compile Include="Compiler.cs" />
     <Compile Include="CompilerBuilder.cs" />
     <Compile Include="CompilerParameters.cs" />
+    <Compile Include="CSharpPrinterVisitor.cs" />
     <Compile Include="Entry.cs" />
+    <Compile Include="WriteCSharp.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -12,8 +12,10 @@ static class Entry
     {
         Console.WriteLine("woot");
         var builder = new CompilerBuilder();
-        builder.SetupUnityProject(args[1], args.Skip(2).ToArray());
-        var compiler = builder.BuildCompiler();
+        var compiler = builder.SetupUnityProject(args[1], args.Skip(2).ToArray())
+            .BuildCompiler()
+            .AdjustWriteCSharpPipeline()
+            .Get;
 
         var results = compiler.Run();
         if (results.Errors.Count > 0)
