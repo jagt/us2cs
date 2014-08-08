@@ -6,10 +6,12 @@ using System.Diagnostics;
 using Boo.Lang.Compiler.Ast;
 using Boo.Lang.Compiler.Ast.Visitors;
 using Attribute = Boo.Lang.Compiler.Ast.Attribute;
+using System.Globalization;
 
 namespace US2CS
 {
 
+// modified on BooPrinterVisitor
 class CSharpPrinterVisitor : TextEmitter
 {
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
@@ -23,6 +25,11 @@ class CSharpPrinterVisitor : TextEmitter
             if (!char.IsLetterOrDigit(ch) && ch != '_' && ch != '.')
                 return false;
         return true;
+    }
+
+    private static bool IsInterfaceMember(TypeMember node)
+    {
+        return node.ParentNode != null && node.ParentNode.NodeType == NodeType.InterfaceDefinition;
     }
 
     public void WriteStringLiteral(string text)
@@ -77,12 +84,339 @@ class CSharpPrinterVisitor : TextEmitter
         }
     }
 
+    void WriteKeyword(string keyword)
+    {
+        Write(keyword);
+    }
+
+    void WriteModifiers(TypeMember member)
+    {
+        WriteIndented();
+        if (member.IsPartial)
+            WriteKeyword("partial ");
+        if (member.IsPublic)
+            WriteKeyword("public ");
+        else if (member.IsProtected)
+            WriteKeyword("protected ");
+        else if (member.IsPrivate)
+            WriteKeyword("private ");
+        else if (member.IsInternal)
+            WriteKeyword("internal ");
+        if (member.IsStatic)
+            WriteKeyword("static ");
+        else if (member.IsOverride)
+            WriteKeyword("override ");
+        else if (member.IsModifierSet(TypeMemberModifiers.Virtual))
+            WriteKeyword("virtual ");
+        else if (member.IsModifierSet(TypeMemberModifiers.Abstract))
+            WriteKeyword("abstract ");
+        if (member.IsFinal)
+            WriteKeyword("final ");
+        if (member.IsNew)
+            WriteKeyword("new ");
+        if (member.HasTransientModifier)
+            WriteKeyword("transient ");
+    }
+
+    private void WriteOptionalModifiers(TypeMember node)
+    {
+        if (IsInterfaceMember(node))
+        {
+            WriteIndented();
+        }
+        else
+        {
+            WriteModifiers(node);
+        }
+    }
+
+    void WriteGenericParameterList(GenericParameterDeclarationCollection items)
+    {
+        Write("<");
+        WriteCommaSeparatedList(items);
+        Write(">");
+    }
+
+    public void WriteBlock(Block b)
+    {
+        BeginBlock();
+        Visit(b.Statements);
+        EndBlock();
+    }
+
+    void BeginBlock()
+    {
+        WriteLine();
+        Write("{");
+        WriteLine();
+        Indent();
+    }
+
+    void EndBlock()
+    {
+        WriteLine();
+        Write("}");
+        WriteLine();
+        Dedent();
+    }
+
+    void WriteTypeReference(TypeReference tr)
+    {
+        Trace.Assert(tr != null, "typereference shouldn't be null");
+        Visit(tr);
+    }
+
+    void WriteTypeDefinition(string keyword, TypeDefinition td)
+    {
+        WriteAttributes(td.Attributes, true);
+        WriteModifiers(td);
+        WriteIndented();
+        WriteKeyword(keyword);
+        Write(" ");
+
+        Write(td.Name);
+        if (td.GenericParameters.Count != 0)
+        {
+            WriteGenericParameterList(td.GenericParameters);
+        }
+
+        if (td.BaseTypes.Count > 0)
+        {
+            Write(" : ");
+            WriteCommaSeparatedList(td.BaseTypes);
+        }
+
+        BeginBlock();
+
+        if (td.Members.Count > 0)
+        {
+            foreach (TypeMember member in td.Members)
+            {
+                Visit(member);
+            }
+        }
+
+        EndBlock();
+
+        Trace.Assert(td.ParentNode as SpliceTypeMember == null, "shouldn't get splice type.");
+    }
+
+    void WriteOperator(string text)
+    {
+        Write(text);
+    }
+
+    public static string GetBinaryOperatorText(BinaryOperatorType op)
+    {
+        switch (op)
+        {
+            case BinaryOperatorType.Assign:
+                return "=";
+
+            case BinaryOperatorType.Match:
+                return "=~";
+
+            case BinaryOperatorType.NotMatch:
+                return "!~";
+
+            case BinaryOperatorType.Equality:
+                return "==";
+
+            case BinaryOperatorType.Inequality:
+                return "!=";
+
+            case BinaryOperatorType.Addition:
+                return "+";
+
+            case BinaryOperatorType.InPlaceAddition:
+                return "+=";
+
+            case BinaryOperatorType.InPlaceBitwiseAnd:
+                return "&=";
+
+            case BinaryOperatorType.InPlaceBitwiseOr:
+                return "|=";
+
+            case BinaryOperatorType.InPlaceSubtraction:
+                return "-=";
+
+            case BinaryOperatorType.InPlaceMultiply:
+                return "*=";
+
+            case BinaryOperatorType.InPlaceModulus:
+                return "%=";
+
+            case BinaryOperatorType.InPlaceExclusiveOr:
+                return "^=";
+
+            case BinaryOperatorType.InPlaceDivision:
+                return "/=";
+
+            case BinaryOperatorType.Subtraction:
+                return "-";
+
+            case BinaryOperatorType.Multiply:
+                return "*";
+
+            case BinaryOperatorType.Division:
+                return "/";
+
+            case BinaryOperatorType.GreaterThan:
+                return ">";
+
+            case BinaryOperatorType.GreaterThanOrEqual:
+                return ">=";
+
+            case BinaryOperatorType.LessThan:
+                return "<";
+
+            case BinaryOperatorType.LessThanOrEqual:
+                return "<=";
+
+            case BinaryOperatorType.Modulus:
+                return "%";
+
+            case BinaryOperatorType.ReferenceEquality:
+                return "==";
+
+            case BinaryOperatorType.ReferenceInequality:
+                return "!=";
+
+            case BinaryOperatorType.TypeTest:
+                return "is";
+
+            case BinaryOperatorType.Or:
+                return "||";
+
+            case BinaryOperatorType.And:
+                return "&&";
+
+            case BinaryOperatorType.BitwiseOr:
+                return "|";
+
+            case BinaryOperatorType.BitwiseAnd:
+                return "&";
+
+            case BinaryOperatorType.ExclusiveOr:
+                return "^";
+
+            case BinaryOperatorType.ShiftLeft:
+                return "<<";
+
+            case BinaryOperatorType.ShiftRight:
+                return ">>";
+
+            case BinaryOperatorType.InPlaceShiftLeft:
+                return "<<=";
+
+            case BinaryOperatorType.InPlaceShiftRight:
+                return ">>=";
+
+            case BinaryOperatorType.Exponentiation:
+            case BinaryOperatorType.Member:
+            case BinaryOperatorType.NotMember:
+                throw new NotImplementedException(op.ToString());
+
+        }
+        throw new NotImplementedException(op.ToString());
+    }
+
+    void WriteParameterList(ParameterDeclarationCollection items)
+    {
+        WriteParameterList(items, "(", ")");
+    }
+
+    void WriteParameterList(ParameterDeclarationCollection items, string st, string ed)
+    {
+        Write(st);
+        int i = 0;
+        foreach (ParameterDeclaration item in items)
+        {
+            if (i > 0)
+            {
+                Write(", ");
+            }
+            if (item.IsParamArray)
+            {
+                WriteKeyword("params ");
+            }
+
+            Visit(item);
+            ++i;
+        }
+        Write(ed);
+    }
+
+    void WriteImplementationComment(string comment)
+    {
+        Write("// impl {0}", comment);
+    }
+
+    enum CallableType { Constructor, Destructor, Usual }
+    void WriteCallableDefinitionHeader(CallableDefinition node, CallableType ct)
+    {
+        WriteAttributes(node.Attributes, true);
+        WriteOptionalModifiers(node);
+
+        switch (ct)
+        {
+            case CallableType.Constructor:
+                break; // pass
+            case CallableType.Destructor:
+                Write("~");
+                break;
+            case CallableType.Usual:
+                WriteTypeReference(node.ReturnType);
+                break;
+        }
+
+        IExplicitMember em = node as IExplicitMember;
+        if (null != em)
+        {
+            Visit(em.ExplicitInfo);
+            Write(".");
+        }
+
+        Write(node.Name);
+        if (node.GenericParameters.Count > 0)
+        {
+            WriteGenericParameterList(node.GenericParameters);
+        }
+
+        WriteParameterList(node.Parameters);
+
+        Trace.Assert(node.ReturnTypeAttributes.Count == 0, "shouldnt get return type attributes");
+    }
+
+    void WriteCallableDefinition(Method node, CallableType ct)
+    {
+        if (node.IsRuntime) WriteImplementationComment("runtime");
+
+        WriteCallableDefinitionHeader(node, ct);
+        if (IsInterfaceMember(node))
+        {
+            WriteLine();
+        }
+        else
+        {
+            Visit(node.Locals);
+            WriteBlock(node.Body);
+        }
+    }
     
     #endregion
 
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
     {
-        throw new NotImplementedException();
+        Write("new ");
+        node.Type.ElementType.Accept(this);
+        Write("[] {");
+        for (int i = 0; i < node.Items.Count; i++)
+        {
+            if (i > 0) Write(", ");
+            Visit(node.Items[i]);
+        }
+        Write("}");
     }
 
     public override void OnArrayTypeReference(ArrayTypeReference node)
@@ -92,12 +426,25 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnAttribute(Attribute node)
     {
-        throw new NotImplementedException();
+        WriteAttribute(node);
     }
 
     public override void OnBinaryExpression(BinaryExpression node)
     {
-        throw new NotImplementedException();
+        Visit(node.Left);
+        Write(" ");
+        Write(GetBinaryOperatorText(node.Operator));
+        Write(" ");
+
+        if (node.Operator == BinaryOperatorType.TypeTest)
+        {
+            // isa rhs is encoded in a typeof expression
+            Visit(((TypeofExpression)node.Right).Type);
+        }
+        else
+        {
+            Visit(node.Right);
+        }
     }
 
     public override void OnBlock(Block node)
@@ -107,67 +454,98 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnBlockExpression(BlockExpression node)
     {
-        throw new NotImplementedException();
+        WriteParameterList(node.Parameters);
+        // noway C# lambda can specify return type ?
+        Write(" => ");
+        WriteBlock(node.Body);
     }
 
     public override void OnBoolLiteralExpression(BoolLiteralExpression node)
     {
-        throw new NotImplementedException();
+        Write(node.Value ? "true" : "false");
     }
 
     public override void OnBreakStatement(BreakStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("break;");
+        WriteLine();
+        Trace.Assert(node.Modifier == null, "shouldn't get modifier");
     }
 
     public override void OnCallableDefinition(CallableDefinition node)
     {
+        // BOO specific feature
         throw new NotImplementedException();
     }
 
     public override void OnCallableTypeReference(CallableTypeReference node)
     {
+        // BOO specific feature
         throw new NotImplementedException();
     }
 
     public override void OnCastExpression(CastExpression node)
     {
-        throw new NotImplementedException();
+        Write("(");
+        Visit(node.Type);
+        Write(")");
+        Visit(node.Target);
     }
 
     public override void OnCharLiteralExpression(CharLiteralExpression node)
     {
+        // US don't support char literal
         throw new NotImplementedException();
     }
 
     public override void OnClassDefinition(ClassDefinition node)
     {
-        throw new NotImplementedException();
+        WriteTypeDefinition("class", node);
     }
 
     public override void OnCollectionInitializationExpression(CollectionInitializationExpression node)
     {
-        throw new NotImplementedException();
+        Visit(node.Collection);
+        Write(" ");
+        if (node.Initializer is ListLiteralExpression)
+        {
+            throw new NotImplementedException();
+        }
+        else
+        {
+            Visit(node.Initializer);
+        }
     }
 
     public override void OnCompileUnit(CompileUnit node)
     {
+        // entry point is OnModule
         throw new NotImplementedException();
     }
 
     public override void OnConditionalExpression(ConditionalExpression node)
     {
-        throw new NotImplementedException();
+        Write("(");
+        Visit(node.Condition);
+        Write(" ? ");
+        Visit(node.TrueValue);
+        Write(" : ");
+        Visit(node.FalseValue);
+        Write(")");
     }
 
     public override void OnConstructor(Constructor node)
     {
-        throw new NotImplementedException();
+        WriteCallableDefinition(node, CallableType.Constructor);
     }
 
     public override void OnContinueStatement(ContinueStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("continue ");
+        WriteLine();
+        Trace.Assert(node.Modifier == null, "shouldn't get modifier");
     }
 
     public override void OnCustomExpression(CustomExpression node)
@@ -182,37 +560,60 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnDeclaration(Declaration node)
     {
-        throw new NotImplementedException();
+        WriteTypeReference(node.Type);
+        Write(node.Name);
     }
 
     public override void OnDeclarationStatement(DeclarationStatement node)
     {
-        throw new NotImplementedException();
+        Visit(node.Declaration);
+        if (node.Initializer != null)
+        {
+            WriteOperator(" = ");
+            Visit(node.Initializer);
+        }
+        WriteLine();
     }
 
     public override void OnDestructor(Destructor node)
     {
-        throw new NotImplementedException();
+        WriteCallableDefinition(node, CallableType.Destructor);
     }
 
     public override void OnDoubleLiteralExpression(DoubleLiteralExpression node)
     {
-        throw new NotImplementedException();
+        Write(node.Value.ToString("########0.0##########", CultureInfo.InvariantCulture));
+        if (node.IsSingle)
+        {
+            Write("f");
+        }
     }
 
     public override void OnEnumDefinition(EnumDefinition node)
     {
-        throw new NotImplementedException();
+        WriteTypeDefinition("enum", node);
     }
 
     public override void OnEnumMember(EnumMember node)
     {
-        throw new NotImplementedException();
+        WriteAttributes(node.Attributes, true);
+        WriteIndented(node.Name);
+        if (node.Initializer != null)
+        {
+            WriteOperator(" = ");
+            Visit(node.Initializer);
+        }
+        WriteLine();
     }
 
     public override void OnEvent(Event node)
     {
-        throw new NotImplementedException();
+        WriteAttributes(node.Attributes, true);
+        WriteOptionalModifiers(node);
+        WriteKeyword("event ");
+        WriteTypeReference(node.Type);
+        Write(node.Name);
+        WriteLine();
     }
 
     public override void OnExceptionHandler(ExceptionHandler node)
@@ -247,7 +648,15 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnField(Field node)
     {
-        throw new NotImplementedException();
+        WriteAttributes(node.Attributes, true);
+        WriteModifiers(node);
+        WriteTypeReference(node.Type);
+        Write(node.Name);
+        if (node.Initializer != null)
+        {
+            Visit(node.Initializer);
+        }
+        WriteLine();
     }
 
     public override void OnForStatement(ForStatement node)
@@ -297,7 +706,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnImport(Import node)
     {
-        Write("using");
+        WriteKeyword("using");
         Write(" {0}", node.Namespace);
 
         if (node.Alias != null)
@@ -361,7 +770,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnMethod(Method node)
     {
-        throw new NotImplementedException();
+        WriteCallableDefinition(node, CallableType.Usual);
     }
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
@@ -381,8 +790,7 @@ class CSharpPrinterVisitor : TextEmitter
 
         foreach (var member in node.Members)
         {
-            Write("// {0}", member.Name);
-            //Visit(member);
+            Visit(member);
             WriteLine();
         }
 
@@ -437,7 +845,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnReferenceExpression(ReferenceExpression node)
     {
-        throw new NotImplementedException();
+        Write(node.Name);
     }
 
     public override void OnReturnStatement(ReturnStatement node)
@@ -452,7 +860,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnSimpleTypeReference(SimpleTypeReference node)
     {
-        throw new NotImplementedException();
+        Write(node.Name);
     }
 
     public override void OnSlice(Slice node)
@@ -507,7 +915,10 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnStringLiteralExpression(StringLiteralExpression node)
     {
-        throw new NotImplementedException();
+        if (node != null && node.Value != null)
+            WriteStringLiteral(node.Value);
+        else
+            WriteKeyword("null");
     }
 
     public override void OnStructDefinition(StructDefinition node)
