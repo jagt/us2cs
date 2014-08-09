@@ -9,6 +9,7 @@ using Boo.Lang.Compiler;
 using Boo.Lang.Compiler.IO;
 using Boo.Lang.Compiler.Resources;
 using Boo.Lang.Compiler.TypeSystem.Services;
+using Boo.Lang.Compiler.Ast.Visitors;
 
 
 namespace US2CS
@@ -184,7 +185,7 @@ class CompilerBuilder
         compiler.Parameters.OutputType = OutputType;
 
         // start building pipelines
-        compiler.Parameters.Pipeline = UnityScriptCompiler.Pipelines.CompileToFile();
+        compiler.Parameters.Pipeline = UnityScriptCompiler.Pipelines.CompileToBoo();
 
         if (SuppressedWarnings.Count > 0)
         {
@@ -230,10 +231,36 @@ class CompilerBuilder
         return this;
     }
 
+    private void AdjustPipelineForSourcePrint()
+    {
+        var pipeline = _compiler.Parameters.Pipeline;
+
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.InjectCallableConversions));
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.NormalizeIterationStatements));
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.OptimizeIterationStatements));
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ExpandPropertiesAndEvents));
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessClosures));
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessGenerators));
+
+        pipeline.Replace(typeof(UnityScript.Steps.ProcessUnityScriptMethods), new AltProcessUnityScriptMethods());
+    }
+
     public CompilerBuilder AdjustWriteCSharpPipeline()
     {
+        AdjustPipelineForSourcePrint();
+
         _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
-        _compiler.Parameters.Pipeline.Add(new WriteCSharp(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_output")));
+        _compiler.Parameters.Pipeline.Add(new WritePrinterStep(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_cs"), typeof(CSharpPrinterVisitor), ".cs"));
+
+        return this;
+    }
+
+    public CompilerBuilder AdjustWriteBooPipeline()
+    {
+        AdjustPipelineForSourcePrint();
+
+        _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
+        _compiler.Parameters.Pipeline.Add(new WritePrinterStep(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_boo"), typeof(BooPrinterVisitor), ".boo"));
 
         return this;
     }

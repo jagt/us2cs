@@ -15,7 +15,15 @@ static class Entry
         var compiler = builder.SetupUnityProject(args[1], args.Skip(2).ToArray())
             .BuildCompiler()
             .AdjustWriteCSharpPipeline()
+            //.AdjustWriteBooPipeline()
             .Get;
+
+        foreach (var step in compiler.Parameters.Pipeline)
+        {
+            Console.WriteLine(step.GetType().FullName);
+        }
+
+
 
         var results = compiler.Run();
         if (results.Errors.Count > 0)

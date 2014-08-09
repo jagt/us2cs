@@ -32,7 +32,20 @@ class CSharpPrinterVisitor : TextEmitter
         return node.ParentNode != null && node.ParentNode.NodeType == NodeType.InterfaceDefinition;
     }
 
-    public void WriteStringLiteral(string text)
+    bool NeedParensAround(Expression e)
+    {
+        if (e.ParentNode == null) return false;
+        switch (e.ParentNode.NodeType)
+        {
+            case NodeType.ExpressionStatement:
+                return false;
+        }
+
+        return true;
+    }
+
+
+    void WriteStringLiteral(string text)
     {
         BooPrinterVisitor.WriteStringLiteral(text, _writer);
     }
@@ -87,6 +100,11 @@ class CSharpPrinterVisitor : TextEmitter
     void WriteKeyword(string keyword)
     {
         Write(keyword);
+    }
+
+    void WriteComma()
+    {
+        Write(";");
     }
 
     void WriteModifiers(TypeMember member)
@@ -154,22 +172,21 @@ class CSharpPrinterVisitor : TextEmitter
     void BeginBlock()
     {
         WriteLine();
-        Write("{");
+        WriteIndented("{{");
         WriteLine();
         Indent();
     }
 
     void EndBlock()
     {
-        WriteLine();
-        Write("}");
-        WriteLine();
         Dedent();
+        WriteIndented("}}");
+        WriteLine();
     }
 
     void WriteTypeReference(TypeReference tr)
     {
-        Trace.Assert(tr != null, "typereference shouldn't be null");
+        //Trace.Assert(tr != null, "typereference shouldn't be null");
         Visit(tr);
     }
 
@@ -388,7 +405,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     void WriteImplementationComment(string comment)
     {
-        Write("// impl {0}", comment);
+        WriteIndented("// impl {0}", comment);
     }
 
     enum CallableType { Constructor, Destructor, Usual }
@@ -406,6 +423,7 @@ class CSharpPrinterVisitor : TextEmitter
                 break;
             case CallableType.Usual:
                 WriteTypeReference(node.ReturnType);
+                Write(" ");
                 break;
         }
 
@@ -413,7 +431,6 @@ class CSharpPrinterVisitor : TextEmitter
         if (null != em)
         {
             Visit(em.ExplicitInfo);
-            Write(".");
         }
 
         Write(node.Name);
@@ -429,6 +446,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     void WriteCallableDefinition(Method node, CallableType ct)
     {
+        WriteLine();
         if (node.IsRuntime) WriteImplementationComment("runtime");
 
         WriteCallableDefinitionHeader(node, ct);
@@ -469,12 +487,13 @@ class CSharpPrinterVisitor : TextEmitter
             Visit(node.Items[i]);
         }
         Write("}");
+        WriteComma();
     }
 
     public override void OnArrayTypeReference(ArrayTypeReference node)
     {
         // FIXME what is this
-        Write("(");
+        Write("(/*array type reference*/");
         Visit(node.ElementType);
         if (null != node.Rank && node.Rank.Value > 1)
         {
@@ -491,6 +510,9 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnBinaryExpression(BinaryExpression node)
     {
+        bool needParens = NeedParensAround(node);
+        if (needParens) Write("(");
+
         Visit(node.Left);
         Write(" ");
         Write(GetBinaryOperatorText(node.Operator));
@@ -505,6 +527,8 @@ class CSharpPrinterVisitor : TextEmitter
         {
             Visit(node.Right);
         }
+
+        if (needParens) Write(")");
     }
 
     public override void OnBlock(Block node)
@@ -518,6 +542,7 @@ class CSharpPrinterVisitor : TextEmitter
         // noway C# lambda can specify return type ?
         Write(" => ");
         WriteBlock(node.Body);
+        WriteComma();
     }
 
     public override void OnBoolLiteralExpression(BoolLiteralExpression node)
@@ -603,7 +628,7 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnContinueStatement(ContinueStatement node)
     {
         WriteIndented();
-        WriteKeyword("continue ");
+        WriteKeyword("continue;");
         WriteLine();
         Trace.Assert(node.Modifier == null, "shouldn't get modifier");
     }
@@ -622,6 +647,7 @@ class CSharpPrinterVisitor : TextEmitter
     {
         WriteTypeReference(node.Type);
         Write(node.Name);
+        WriteComma();
     }
 
     public override void OnDeclarationStatement(DeclarationStatement node)
@@ -632,6 +658,7 @@ class CSharpPrinterVisitor : TextEmitter
             WriteOperator(" = ");
             Visit(node.Initializer);
         }
+        WriteComma();
         WriteLine();
     }
 
@@ -657,6 +684,7 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnEnumMember(EnumMember node)
     {
         // FIXME pretty sure this is broken
+        WriteImplementationComment("// enum is broken");
         WriteAttributes(node.Attributes, true);
         WriteIndented(node.Name);
         if (node.Initializer != null)
@@ -730,6 +758,7 @@ class CSharpPrinterVisitor : TextEmitter
         WriteIndented();
         Visit(node.Modifier);
         Visit(node.Expression);
+        WriteComma();
         WriteLine();
     }
 
@@ -744,16 +773,18 @@ class CSharpPrinterVisitor : TextEmitter
         WriteAttributes(node.Attributes, true);
         WriteModifiers(node);
         WriteTypeReference(node.Type);
-        Write(node.Name);
+        Write(" {0}", node.Name);
         if (node.Initializer != null)
         {
             Visit(node.Initializer);
         }
+        WriteComma();
         WriteLine();
     }
 
     public override void OnForStatement(ForStatement node)
     {
+        WriteLine();
         WriteIndented();
         WriteKeyword("foreach ");
         Write("(");
@@ -762,7 +793,6 @@ class CSharpPrinterVisitor : TextEmitter
         WriteKeyword(" in ");
         Visit(node.Iterator);
         Write(")");
-        WriteLine();
         WriteBlock(node.Block);
 
         Trace.Assert(node.OrBlock == null, "don't support for or block.");
@@ -826,10 +856,10 @@ class CSharpPrinterVisitor : TextEmitter
         Block elseBlock = falseBlock;
         if (elseBlock != null)
         {
-            WriteKeyword("else");
-            WriteLine();
+            WriteIndented("else");
             WriteBlock(elseBlock);
         }
+        WriteLine();
     }
 
     private bool IsElseIf(Block block)
@@ -864,7 +894,7 @@ class CSharpPrinterVisitor : TextEmitter
 
         Trace.Assert(node.Expression.NodeType != NodeType.MethodInvocationExpression, "shouldn't get import method invoke");
 
-        Write(";");
+        WriteComma();
         WriteLine();
     }
 
@@ -961,9 +991,8 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnNamespaceDeclaration(NamespaceDeclaration node)
     {
-        WriteKeyword("namespace");
-        WriteLine(" {0}", node.Name);
-        WriteLine();
+        // US don't support namespace
+        throw new NotImplementedException();
     }
 
     public override void OnNullLiteralExpression(NullLiteralExpression node)
@@ -1016,6 +1045,7 @@ class CSharpPrinterVisitor : TextEmitter
         WriteKeyword("throw ");
         Visit(node.Exception);
         Visit(node.Modifier);
+        WriteComma();
         WriteLine();
     }
 
@@ -1032,6 +1062,7 @@ class CSharpPrinterVisitor : TextEmitter
             Write(" ");
         Visit(node.Expression);
         Visit(node.Modifier);
+        WriteComma();
         WriteLine();
     }
 
@@ -1158,9 +1189,8 @@ class CSharpPrinterVisitor : TextEmitter
         if (null != node.EnsureBlock)
         {
             WriteIndented();
-            WriteKeyword("finally:");
+            WriteKeyword("finally");
             WriteBlock(node.EnsureBlock);
-            Dedent();
         }
     }
 
@@ -1178,6 +1208,9 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnUnaryExpression(UnaryExpression node)
     {
+        bool needParens = NeedParensAround(node);
+        if (needParens) Write("(");
+
         bool postOperator = AstUtil.IsPostUnaryOperator(node.Operator);
         if (!postOperator)
         {
@@ -1188,6 +1221,8 @@ class CSharpPrinterVisitor : TextEmitter
         {
             WriteOperator(GetUnaryOperatorText(node.Operator));
         }
+
+        if (needParens) Write(")");
     }
 
     public override void OnUnlessStatement(UnlessStatement node)
@@ -1204,6 +1239,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnWhileStatement(WhileStatement node)
     {
+        WriteLine();
         WriteIndented();
         WriteKeyword("while ");
         Visit(node.Condition);
@@ -1216,11 +1252,13 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnYieldStatement(YieldStatement node)
     {
         WriteIndented();
-        WriteKeyword("yield ");
+        WriteKeyword("yield return");
         Visit(node.Expression);
         Visit(node.Modifier);
+        WriteComma();
         WriteLine();
     }
+
 }
 
 

@@ -4,19 +4,24 @@ using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
 using Boo.Lang.Compiler.Steps;
+using Boo.Lang.Compiler.Ast.Visitors;
 
 namespace US2CS
 {
 
-class WriteCSharp : AbstractCompilerStep
+class WritePrinterStep : AbstractCompilerStep
 {
     private string _projectRoot;
     private string _outputRoot;
+    private Type _printerType;
+    private string _suffix;
 
-    public WriteCSharp(string projectRoot, string outputRoot)
+    public WritePrinterStep(string projectRoot, string outputRoot, Type printerType, string suffix)
     {
         _projectRoot = projectRoot;
         _outputRoot = outputRoot;
+        _printerType = printerType;
+        _suffix = suffix;
     }
 
     [System.Diagnostics.DebuggerNonUserCode]
@@ -34,7 +39,7 @@ class WriteCSharp : AbstractCompilerStep
             var relateivePath = fileInfo.FullName.Substring(rootDirInfo.FullName.Length+1);
 
             var js2csPat = new Regex(".js$");
-            var outputPath = js2csPat.Replace(Path.Combine(_outputRoot, relateivePath), ".cs");
+            var outputPath = js2csPat.Replace(Path.Combine(_outputRoot, relateivePath), _suffix);
             var outputPathParent = Path.GetDirectoryName(outputPath);
             if (!Directory.Exists(outputPathParent))
             {
@@ -42,7 +47,7 @@ class WriteCSharp : AbstractCompilerStep
             }
             using (StreamWriter writer = File.CreateText(outputPath))
             {
-                var visitor = new CSharpPrinterVisitor(writer);
+                TextEmitter visitor = (TextEmitter)Activator.CreateInstance(_printerType, writer);
                 visitor.OnModule(module);
             }
         }
