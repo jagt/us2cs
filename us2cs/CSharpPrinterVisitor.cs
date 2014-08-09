@@ -137,6 +137,13 @@ class CSharpPrinterVisitor : TextEmitter
         Write(">");
     }
 
+    void WriteGenericArguments(TypeReferenceCollection items)
+    {
+        Write("<");
+        WriteCommaSeparatedList(items);
+        Write(">");
+    }
+
     public void WriteBlock(Block b)
     {
         BeginBlock();
@@ -321,6 +328,38 @@ class CSharpPrinterVisitor : TextEmitter
         throw new NotImplementedException(op.ToString());
     }
 
+    public static string GetUnaryOperatorText(UnaryOperatorType op)
+    {
+        switch (op)
+        {
+            case UnaryOperatorType.PostIncrement:
+            case UnaryOperatorType.Increment:
+                return "++";
+
+            case UnaryOperatorType.PostDecrement:
+            case UnaryOperatorType.Decrement:
+                return "--";
+
+            case UnaryOperatorType.UnaryNegation:
+                return "-";
+
+            case UnaryOperatorType.LogicalNot:
+                return "not ";
+
+            case UnaryOperatorType.OnesComplement:
+                return "~";
+
+            case UnaryOperatorType.AddressOf:
+                return "&";
+
+            case UnaryOperatorType.Indirection:
+            case UnaryOperatorType.Explode:
+                throw new NotImplementedException(op.ToString());
+        }
+        throw new ArgumentException(op.ToString());
+    }
+
+
     void WriteParameterList(ParameterDeclarationCollection items)
     {
         WriteParameterList(items, "(", ")");
@@ -403,13 +442,26 @@ class CSharpPrinterVisitor : TextEmitter
             WriteBlock(node.Body);
         }
     }
-    
+
+    void WriteIfBlock(string keyword, IfStatement ifs)
+    {
+        WriteIndented();
+        WriteKeyword(keyword);
+        Write("(");
+        Visit(ifs.Condition);
+        Write(")");
+        WriteBlock(ifs.TrueBlock);
+    }
+
     #endregion
 
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
     {
         Write("new ");
-        node.Type.ElementType.Accept(this);
+        if (node.Type != null)
+        {
+            node.Type.ElementType.Accept(this);
+        }
         Write("[] {");
         for (int i = 0; i < node.Items.Count; i++)
         {
@@ -421,7 +473,15 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnArrayTypeReference(ArrayTypeReference node)
     {
-        throw new NotImplementedException();
+        // FIXME what is this
+        Write("(");
+        Visit(node.ElementType);
+        if (null != node.Rank && node.Rank.Value > 1)
+        {
+            Write(", ");
+            node.Rank.Accept(this);
+        }
+        Write(")");
     }
 
     public override void OnAttribute(Attribute node)
@@ -449,7 +509,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnBlock(Block node)
     {
-        throw new NotImplementedException();
+        // FIXME do nothing?
     }
 
     public override void OnBlockExpression(BlockExpression node)
@@ -596,6 +656,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnEnumMember(EnumMember node)
     {
+        // FIXME pretty sure this is broken
         WriteAttributes(node.Attributes, true);
         WriteIndented(node.Name);
         if (node.Initializer != null)
@@ -618,31 +679,63 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnExceptionHandler(ExceptionHandler node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("catch");
+        Write("(");
+        if ((node.Flags & ExceptionHandlerFlags.Untyped) == ExceptionHandlerFlags.None)
+        {
+            if ((node.Flags & ExceptionHandlerFlags.Anonymous) == ExceptionHandlerFlags.None)
+            {
+                Write(" ");
+                Visit(node.Declaration);
+            }
+            else
+            {
+                WriteTypeReference(node.Declaration.Type);
+            }
+        }
+        else if ((node.Flags & ExceptionHandlerFlags.Anonymous) == ExceptionHandlerFlags.None)
+        {
+            Write(" ");
+            Write(node.Declaration.Name);
+        }
+        Write(")");
+
+        Trace.Assert((node.Flags & ExceptionHandlerFlags.Filter) != ExceptionHandlerFlags.Filter, "shouldn't get filtered exception handler");
+        WriteBlock(node.Block);
+        Dedent();
+
     }
 
     public override void OnExplicitMemberInfo(ExplicitMemberInfo node)
     {
-        throw new NotImplementedException();
+        Visit(node.InterfaceType);
+        Write(".");
     }
 
     public override void OnExpressionInterpolationExpression(ExpressionInterpolationExpression node)
     {
+        // US don't has string interpolation
         throw new NotImplementedException();
     }
 
     public override void OnExpressionPair(ExpressionPair node)
     {
+        // US don't have expression pair (used in list slicing maybe)
         throw new NotImplementedException();
     }
 
     public override void OnExpressionStatement(ExpressionStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        Visit(node.Modifier);
+        Visit(node.Expression);
+        WriteLine();
     }
 
     public override void OnExtendedGeneratorExpression(ExtendedGeneratorExpression node)
     {
+        // US don't have generator expression (list comprehension like things)
         throw new NotImplementedException();
     }
 
@@ -661,47 +754,89 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnForStatement(ForStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("foreach ");
+        Write("(");
+        Trace.Assert(node.Declarations.Count == 1, "don't support multiple statements.");
+        Visit(node.Declarations[0]);
+        WriteKeyword(" in ");
+        Visit(node.Iterator);
+        Write(")");
+        WriteLine();
+        WriteBlock(node.Block);
+
+        Trace.Assert(node.OrBlock == null, "don't support for or block.");
+        Trace.Assert(node.ThenBlock == null, "don't support for or block.");
     }
 
     public override void OnGeneratorExpression(GeneratorExpression node)
     {
+        // US don't have generator expression (list comprehension like things)
         throw new NotImplementedException();
     }
 
     public override void OnGenericParameterDeclaration(GenericParameterDeclaration node)
     {
+        // US don't have generic declaration
         throw new NotImplementedException();
     }
 
     public override void OnGenericReferenceExpression(GenericReferenceExpression node)
     {
-        throw new NotImplementedException();
+        Visit(node.Target);
+        Write("<");
+        WriteCommaSeparatedList(node.GenericArguments);
+        Write(">");
     }
 
     public override void OnGenericTypeDefinitionReference(GenericTypeDefinitionReference node)
     {
+        // US don't have this
         throw new NotImplementedException();
     }
 
     public override void OnGenericTypeReference(GenericTypeReference node)
     {
-        throw new NotImplementedException();
+        OnSimpleTypeReference(node);
+        WriteGenericArguments(node.GenericArguments);
     }
 
     public override void OnGotoStatement(GotoStatement node)
     {
+        // US don't have goto
         throw new NotImplementedException();
     }
 
     public override void OnHashLiteralExpression(HashLiteralExpression node)
     {
+        // US don't have hash literal
         throw new NotImplementedException();
     }
 
     public override void OnIfStatement(IfStatement node)
     {
-        throw new NotImplementedException();
+        WriteIfBlock("if ", node);
+        Block falseBlock = node.FalseBlock;
+        while (IsElseIf(falseBlock))
+        {
+            IfStatement stmt = (IfStatement)falseBlock.Statements[0];
+            WriteIfBlock("else if", stmt);
+            falseBlock = stmt.FalseBlock;
+        }
+        Block elseBlock = falseBlock;
+        if (elseBlock != null)
+        {
+            WriteKeyword("else");
+            WriteLine();
+            WriteBlock(elseBlock);
+        }
+    }
+
+    private bool IsElseIf(Block block)
+    {
+        if (block == null) return false;
+        if (block.Statements.Count != 1) return false;
+        return block.Statements[0] is IfStatement;
     }
 
     public override void OnImport(Import node)
@@ -735,37 +870,47 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnIntegerLiteralExpression(IntegerLiteralExpression node)
     {
-        throw new NotImplementedException();
+        Write(node.Value.ToString());
+        if (node.IsLong)
+        {
+            Write("l");
+        }
     }
 
     public override void OnInterfaceDefinition(InterfaceDefinition node)
     {
-        throw new NotImplementedException();
+        WriteTypeDefinition("interface", node);
     }
 
     public override void OnLabelStatement(LabelStatement node)
     {
-        throw new NotImplementedException();
+        WriteLine("{0} :", node.Name);
     }
 
     public override void OnListLiteralExpression(ListLiteralExpression node)
     {
-        throw new NotImplementedException();
+        Write("new Object[] {");
+        WriteCommaSeparatedList(node.Items);
+        Write("}");
     }
 
     public override void OnLocal(Local node)
     {
-        throw new NotImplementedException();
+        WriteImplementationComment(String.Format("Local {0}, {1}, PrivateScope: {2}", node.Name, node.Entity, node.PrivateScope));
+        WriteLine();
     }
 
     public override void OnMacroStatement(MacroStatement node)
     {
+        // US don't have macros
         throw new NotImplementedException();
     }
 
     public override void OnMemberReferenceExpression(MemberReferenceExpression node)
     {
-        throw new NotImplementedException();
+        Visit(node.Target);
+        Write(".");
+        Write(node.Name);
     }
 
     public override void OnMethod(Method node)
@@ -775,7 +920,18 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
-        throw new NotImplementedException();
+        Visit(node.Target);
+        Write("(");
+        WriteCommaSeparatedList(node.Arguments);
+        if (node.NamedArguments.Count > 0)
+        {
+            if (node.Arguments.Count > 0)
+            {
+                Write(", ");
+            }
+            WriteCommaSeparatedList(node.NamedArguments);
+        }
+        Write(")");
     }
 
     public override void OnModule(Module node)
@@ -805,42 +961,62 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnNamespaceDeclaration(NamespaceDeclaration node)
     {
-        throw new NotImplementedException();
+        WriteKeyword("namespace");
+        WriteLine(" {0}", node.Name);
+        WriteLine();
     }
 
     public override void OnNullLiteralExpression(NullLiteralExpression node)
     {
-        throw new NotImplementedException();
+        WriteKeyword("null");
     }
 
     public override void OnOmittedExpression(OmittedExpression node)
     {
+        // US don't have this?
         throw new NotImplementedException();
     }
 
     public override void OnParameterDeclaration(ParameterDeclaration node)
     {
-        throw new NotImplementedException();
+        WriteAttributes(node.Attributes, false);
+
+        if (node.IsByRef) WriteKeyword("ref ");
+
+        Write(node.Name);
+        WriteTypeReference(node.Type);
+
+        if (node.ParentNode != null)
+        {
+            Trace.Assert(node.ParentNode.NodeType != NodeType.CallableTypeReference, "shouldn't get callable type reference");
+        }
     }
 
     public override void OnProperty(Property node)
     {
+        // US don't have property
         throw new NotImplementedException();
     }
 
     public override void OnQuasiquoteExpression(QuasiquoteExpression node)
     {
+        // US don't have quasi quote expression
         throw new NotImplementedException();
     }
 
     public override void OnRELiteralExpression(RELiteralExpression node)
     {
+        // US don't have RE literal
         throw new NotImplementedException();
     }
 
     public override void OnRaiseStatement(RaiseStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("throw ");
+        Visit(node.Exception);
+        Visit(node.Modifier);
+        WriteLine();
     }
 
     public override void OnReferenceExpression(ReferenceExpression node)
@@ -850,12 +1026,18 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnReturnStatement(ReturnStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("return");
+        if (node.Expression != null || node.Modifier != null)
+            Write(" ");
+        Visit(node.Expression);
+        Visit(node.Modifier);
+        WriteLine();
     }
 
     public override void OnSelfLiteralExpression(SelfLiteralExpression node)
     {
-        throw new NotImplementedException();
+        WriteKeyword("this");
     }
 
     public override void OnSimpleTypeReference(SimpleTypeReference node)
@@ -865,52 +1047,66 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnSlice(Slice node)
     {
-        throw new NotImplementedException();
+        // US don't have slicing
+        // FIXME why calling this
+        WriteImplementationComment("slicing: " + node.LexicalInfo);
+        //throw new NotImplementedException();
     }
 
     public override void OnSlicingExpression(SlicingExpression node)
     {
-        throw new NotImplementedException();
+        // US don't have slicing
+        // FIXME why calling this
+        WriteImplementationComment("slicing: " + node.LexicalInfo);
+        //throw new NotImplementedException();
     }
 
     public override void OnSpliceExpression(SpliceExpression node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnSpliceMemberReferenceExpression(SpliceMemberReferenceExpression node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnSpliceParameterDeclaration(SpliceParameterDeclaration node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnSpliceTypeDefinitionBody(SpliceTypeDefinitionBody node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnSpliceTypeMember(SpliceTypeMember node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnSpliceTypeReference(SpliceTypeReference node)
     {
+        // US don't have splicing
         throw new NotImplementedException();
     }
 
     public override void OnStatementModifier(StatementModifier node)
     {
+        // US don't have statement modifier
         throw new NotImplementedException();
     }
 
     public override void OnStatementTypeMember(StatementTypeMember node)
     {
-        throw new NotImplementedException();
+        WriteModifiers(node);
+        Visit(node.Statement);
     }
 
     public override void OnStringLiteralExpression(StringLiteralExpression node)
@@ -923,12 +1119,12 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnStructDefinition(StructDefinition node)
     {
-        throw new NotImplementedException();
+        WriteTypeDefinition("struct", node);
     }
 
     public override void OnSuperLiteralExpression(SuperLiteralExpression node)
     {
-        throw new NotImplementedException();
+        WriteKeyword("base");
     }
 
     public override void OnTimeSpanLiteralExpression(TimeSpanLiteralExpression node)
@@ -938,12 +1134,34 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnTryCastExpression(TryCastExpression node)
     {
-        throw new NotImplementedException();
+        Write("(");
+        Visit(node.Target);
+        WriteKeyword(" as ");
+        WriteTypeReference(node.Type);
+        Write(")");
     }
 
     public override void OnTryStatement(TryStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("try");
+        WriteBlock(node.ProtectedBlock);
+        Visit(node.ExceptionHandlers);
+
+        if (null != node.FailureBlock)
+        {
+            WriteIndented();
+            WriteKeyword("catch");
+            WriteBlock(node.FailureBlock);
+        }
+
+        if (null != node.EnsureBlock)
+        {
+            WriteIndented();
+            WriteKeyword("finally:");
+            WriteBlock(node.EnsureBlock);
+            Dedent();
+        }
     }
 
     public override void OnTypeMemberStatement(TypeMemberStatement node)
@@ -953,32 +1171,55 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnTypeofExpression(TypeofExpression node)
     {
-        throw new NotImplementedException();
+        Write("typeof(");
+        Visit(node.Type);
+        Write(")");
     }
 
     public override void OnUnaryExpression(UnaryExpression node)
     {
-        throw new NotImplementedException();
+        bool postOperator = AstUtil.IsPostUnaryOperator(node.Operator);
+        if (!postOperator)
+        {
+            WriteOperator(GetUnaryOperatorText(node.Operator));
+        }
+        Visit(node.Operand);
+        if (postOperator)
+        {
+            WriteOperator(GetUnaryOperatorText(node.Operator));
+        }
     }
 
     public override void OnUnlessStatement(UnlessStatement node)
     {
+        // US don't have unless
         throw new NotImplementedException();
     }
 
     public override void OnUnpackStatement(UnpackStatement node)
     {
+        // US don't have unless
         throw new NotImplementedException();
     }
 
     public override void OnWhileStatement(WhileStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("while ");
+        Visit(node.Condition);
+        WriteBlock(node.Block);
+
+        Trace.Assert(node.OrBlock == null, "shoudn't get or block");
+        Trace.Assert(node.ThenBlock == null, "shoudn't get then block");
     }
 
     public override void OnYieldStatement(YieldStatement node)
     {
-        throw new NotImplementedException();
+        WriteIndented();
+        WriteKeyword("yield ");
+        Visit(node.Expression);
+        Visit(node.Modifier);
+        WriteLine();
     }
 }
 
