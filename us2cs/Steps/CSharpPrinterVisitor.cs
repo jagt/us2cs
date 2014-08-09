@@ -646,8 +646,8 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnDeclaration(Declaration node)
     {
         WriteTypeReference(node.Type);
+        Write(" ");
         Write(node.Name);
-        WriteComma();
     }
 
     public override void OnDeclarationStatement(DeclarationStatement node)

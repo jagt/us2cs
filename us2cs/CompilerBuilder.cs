@@ -235,21 +235,33 @@ class CompilerBuilder
     {
         var pipeline = _compiler.Parameters.Pipeline;
 
+        _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
+
+        // don't have callables in us
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.TransformCallableDefinitions));
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.InjectCallableConversions));
+        // don't have statement modifier
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.NormalizeStatementModifiers));
+        // keep constants
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ConstantFolding));
+        // keep for loops
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.NormalizeIterationStatements));
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.OptimizeIterationStatements));
+        // don't expand property access to function calls
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ExpandPropertiesAndEvents));
+        // keep closure and genrators
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessClosures));
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessGenerators));
 
         pipeline.Replace(typeof(UnityScript.Steps.ProcessUnityScriptMethods), new AltProcessUnityScriptMethods());
+
+        pipeline.Add(new CSharpPrintTransformer());
     }
 
     public CompilerBuilder AdjustWriteCSharpPipeline()
     {
         AdjustPipelineForSourcePrint();
 
-        _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
         _compiler.Parameters.Pipeline.Add(new WritePrinterStep(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_cs"), typeof(CSharpPrinterVisitor), ".cs"));
 
         return this;
@@ -259,7 +271,6 @@ class CompilerBuilder
     {
         AdjustPipelineForSourcePrint();
 
-        _compiler.Parameters.Pipeline.RemoveAt(_compiler.Parameters.Pipeline.Count - 1);
         _compiler.Parameters.Pipeline.Add(new WritePrinterStep(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_boo"), typeof(BooPrinterVisitor), ".boo"));
 
         return this;
