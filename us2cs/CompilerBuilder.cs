@@ -10,6 +10,7 @@ using Boo.Lang.Compiler.IO;
 using Boo.Lang.Compiler.Resources;
 using Boo.Lang.Compiler.TypeSystem.Services;
 using Boo.Lang.Compiler.Ast.Visitors;
+using Boo.Lang.Compiler.Steps;
 
 
 namespace US2CS
@@ -252,6 +253,8 @@ class CompilerBuilder
         // keep closure and genrators
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessClosures));
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessGenerators));
+        // remove 'transform.position.x += 2' handling, we'll do it by our self
+        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessAssignmentsToValueTypeMembers));
 
         pipeline.Replace(typeof(UnityScript.Steps.ProcessUnityScriptMethods), new AltProcessUnityScriptMethods());
 
@@ -272,6 +275,14 @@ class CompilerBuilder
         AdjustPipelineForSourcePrint();
 
         _compiler.Parameters.Pipeline.Add(new WritePrinterStep(UnityProjectRoot, Path.Combine(UnityProjectRoot, "us2cs_boo"), typeof(BooPrinterVisitor), ".boo"));
+
+        return this;
+    }
+
+    public CompilerBuilder AdjustTestingPipeline()
+    {
+        _compiler.Parameters.Pipeline.InsertAfter(typeof(UnityScript.Steps.CheckBaseTypes), new PrintCSharp());
+        //_compiler.Parameters.Pipeline.InsertAfter(typeof(UnityScript.Steps.CheckBaseTypes), new PrintBoo());
 
         return this;
     }

@@ -11,11 +11,15 @@ static class Entry
     public static void Main(string[] args)
     {
         Console.WriteLine("woot");
+        Console.WriteLine(System.AppDomain.CurrentDomain.FriendlyName);
+        Console.WriteLine("woot");
+
         var builder = new CompilerBuilder();
         var compiler = builder.SetupUnityProject(args[1], args.Skip(2).ToArray())
             .BuildCompiler()
             .AdjustWriteCSharpPipeline()
             //.AdjustWriteBooPipeline()
+            //.AdjustTestingPipeline()
             .Get;
 
         foreach (var step in compiler.Parameters.Pipeline)

@@ -7,6 +7,7 @@ using Boo.Lang.Compiler.Ast;
 using Boo.Lang.Compiler.Ast.Visitors;
 using Attribute = Boo.Lang.Compiler.Ast.Attribute;
 using System.Globalization;
+using Boo.Lang.Compiler.TypeSystem.Internal;
 
 namespace US2CS
 {
@@ -16,6 +17,11 @@ class CSharpPrinterVisitor : TextEmitter
 {
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
     {
+    }
+
+    public void Print(CompileUnit ast)
+    {
+        OnCompileUnit(ast);
     }
 
     #region Write helpers from BooPrinterVisitor
@@ -456,8 +462,11 @@ class CSharpPrinterVisitor : TextEmitter
         }
         else
         {
+            BeginBlock();
             Visit(node.Locals);
-            WriteBlock(node.Body);
+            if (node.Locals.Count > 0) WriteLine();
+            Visit(node.Body.Statements);
+            EndBlock();
         }
     }
 
@@ -601,12 +610,6 @@ class CSharpPrinterVisitor : TextEmitter
         {
             Visit(node.Initializer);
         }
-    }
-
-    public override void OnCompileUnit(CompileUnit node)
-    {
-        // entry point is OnModule
-        throw new NotImplementedException();
     }
 
     public override void OnConditionalExpression(ConditionalExpression node)
@@ -926,7 +929,8 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnLocal(Local node)
     {
-        WriteImplementationComment(String.Format("Local {0}, {1}, PrivateScope: {2}", node.Name, node.Entity, node.PrivateScope));
+        // TODO should be a better way to handle this
+        WriteIndented("{1} {0};", node.Name, ((InternalLocal)(node.Entity)).Type);
         WriteLine();
     }
 
