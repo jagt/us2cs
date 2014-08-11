@@ -19,6 +19,10 @@ class AltProcessUnityScriptMethods : ProcessUnityScriptMethods
     {
         Visit(node.Iterator);
     }
+
+    //
+    // skip resolving operator overload
+    //
 }
 
 }
