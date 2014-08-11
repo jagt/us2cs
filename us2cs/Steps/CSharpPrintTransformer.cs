@@ -71,44 +71,56 @@ class CSharpPrintTransformer : AbstractTransformerCompilerStep
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
-        var reference = node.Target as MemberReferenceExpression;
-        if (reference == null)
+        var reference = node.Target as ReferenceExpression;
+        if (reference == null || reference.Entity == null || reference.Entity.EntityType != EntityType.Method)
         {
             return;
         }
 
-        if (reference.Name.StartsWith("op_"))
+        var method = (IMethod)reference.Entity;
+        if (method.Name.StartsWith("op_"))
         {
-            UnresolveOperatorOverload(node, reference);
+            UnresolveOperatorOverload(node, method);
         }
 
         base.OnMethodInvocationExpression(node);
     }
 
-    private bool UnresolveOperatorOverload(MethodInvocationExpression node, MemberReferenceExpression exp)
+    private bool UnresolveOperatorOverload(MethodInvocationExpression node, IMethod method)
     {
-        var operatorName = exp.Name.Substring(3);
-        Trace.Assert(node.Arguments.Count > 0, "operator overload method should have more than 1 arg.");
+        var operatorName = method.Name.Substring(3);
+        Console.WriteLine(operatorName);
+        Expression replacementExpression = null;
+
         if (operatorName == "Implicit")
         {
-            var castToTypeRef = CodeBuilder.CreateTypeReference(TypeSystemServices.GetReferencedType(exp.Target));
-            var castExpression = new CastExpression(node.LexicalInfo, node.Arguments[0], castToTypeRef);
-            node.ParentNode.Replace(node, castExpression);
-            return true;
+            var castToTypeRef = CodeBuilder.CreateTypeReference(method.DeclaringType);
+            replacementExpression = new CastExpression(node.LexicalInfo, node.Arguments[0], castToTypeRef);
         }
         else if (node.Arguments.Count == 1)
         {
             var unaryType = (UnaryOperatorType)Enum.Parse(typeof(UnaryOperatorType), operatorName);
-            Console.WriteLine("resolved to: " + unaryType);
+            replacementExpression = new UnaryExpression(node.LexicalInfo, unaryType, node.Arguments[0]);
+        }
+        else if (node.Arguments.Count == 2)
+        {
+            var binaryType = (BinaryOperatorType)Enum.Parse(typeof(BinaryOperatorType), operatorName);
+            replacementExpression = new BinaryExpression(node.LexicalInfo, binaryType, node.Arguments[0], node.Arguments[1]);
         }
         else
         {
-
+            Trace.Fail("operator overload method should have more than 1 arg.");
         }
 
+        if (replacementExpression != null)
+        {
+            node.ParentNode.Replace(node, replacementExpression);
+            return true;
+        }
 
         return false;
     }
+
 }
 
 }
