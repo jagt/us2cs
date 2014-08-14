@@ -34,28 +34,28 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Boo.Lang">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.CodeDom">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.CodeDom.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.CodeDom.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.Compiler">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.Compiler.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.Compiler.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.Extensions">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.Extensions.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.Interpreter">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.Interpreter.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.Interpreter.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.Parser">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.Parser.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.Parser.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.PatternMatching">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.PatternMatching.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.PatternMatching.dll</HintPath>
     </Reference>
     <Reference Include="Boo.Lang.Useful">
-      <HintPath>..\..\..\unityscript\bin\Boo.Lang.Useful.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\Boo.Lang.Useful.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -65,10 +65,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityScript">
-      <HintPath>..\..\..\unityscript\bin\UnityScript.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\UnityScript.dll</HintPath>
     </Reference>
     <Reference Include="UnityScript.Lang">
-      <HintPath>..\..\..\unityscript\bin\UnityScript.Lang.dll</HintPath>
+      <HintPath>F:\unitys\unityscript\bin\UnityScript.Lang.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

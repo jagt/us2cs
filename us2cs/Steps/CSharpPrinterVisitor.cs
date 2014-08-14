@@ -501,15 +501,16 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnArrayTypeReference(ArrayTypeReference node)
     {
-        // FIXME what is this
-        Write("(/*array type reference*/");
         Visit(node.ElementType);
-        if (null != node.Rank && node.Rank.Value > 1)
+        if (node.Rank != null && node.Rank.Value >= 1)
         {
-            Write(", ");
-            node.Rank.Accept(this);
+            Write("[");
+            for (int ix = 1; ix < node.Rank.Value; ix++)
+            {
+                Write(",");
+            }
+            Write("]");
         }
-        Write(")");
     }
 
     public override void OnAttribute(Attribute node)
@@ -539,6 +540,8 @@ class CSharpPrinterVisitor : TextEmitter
 
         if (needParens) Write(")");
     }
+
+
 
     public override void OnBlock(Block node)
     {
@@ -1082,18 +1085,17 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnSlice(Slice node)
     {
-        // US don't have slicing
-        // FIXME why calling this
-        WriteImplementationComment("slicing: " + node.LexicalInfo);
-        //throw new NotImplementedException();
+        Visit(node.Begin);
+        Trace.Assert(node.End == null, "shouldn't get slice with end.");
+        Trace.Assert(node.Step == null, "shouldn't get slice with step.");
     }
 
     public override void OnSlicingExpression(SlicingExpression node)
     {
-        // US don't have slicing
-        // FIXME why calling this
-        WriteImplementationComment("slicing: " + node.LexicalInfo);
-        //throw new NotImplementedException();
+        Visit(node.Target);
+        Write("[");
+        WriteCommaSeparatedList(node.Indices);
+        Write("]");
     }
 
     public override void OnSpliceExpression(SpliceExpression node)

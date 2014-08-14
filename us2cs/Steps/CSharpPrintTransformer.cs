@@ -82,14 +82,31 @@ class CSharpPrintTransformer : AbstractTransformerCompilerStep
         {
             UnresolveOperatorOverload(node, method);
         }
+        else if (method.Name.StartsWith("get_"))
+        {
+            UnresolveSimpleIndexing(node, method);
+        }
 
         base.OnMethodInvocationExpression(node);
+    }
+
+    private bool UnresolveSimpleIndexing(MethodInvocationExpression node, IMethod method)
+    {
+        var getterName = method.Name.Substring(4);
+        if (getterName != "Item")
+        {
+            return false;
+        }
+
+        var slicing = CodeBuilder.CreateSlicing(node.Arguments[0], 0);
+        node.ParentNode.Replace(node, slicing);
+
+        return true;
     }
 
     private bool UnresolveOperatorOverload(MethodInvocationExpression node, IMethod method)
     {
         var operatorName = method.Name.Substring(3);
-        Console.WriteLine(operatorName);
         Expression replacementExpression = null;
 
         if (operatorName == "Implicit")
