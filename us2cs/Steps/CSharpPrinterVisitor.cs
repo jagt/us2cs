@@ -367,7 +367,7 @@ class CSharpPrinterVisitor : TextEmitter
                 return "-";
 
             case UnaryOperatorType.LogicalNot:
-                return "not ";
+                return "!";
 
             case UnaryOperatorType.OnesComplement:
                 return "~";

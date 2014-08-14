@@ -78,7 +78,8 @@
     <Compile Include="Steps\AltProcessUnityScriptMethods.cs" />
     <Compile Include="Steps\CSharpPrinterVisitor.cs" />
     <Compile Include="Entry.cs" />
-    <Compile Include="Steps\CSharpPrintTransformer.cs" />
+    <Compile Include="Steps\CSharpRewriteTransformer.cs" />
+    <Compile Include="Steps\InjectExplicitBooleanConversion.cs" />
     <Compile Include="Steps\PrintCSharp.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Steps\WritePrinterStep.cs" />

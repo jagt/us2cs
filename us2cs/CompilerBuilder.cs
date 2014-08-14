@@ -258,7 +258,9 @@ class CompilerBuilder
 
         pipeline.Replace(typeof(UnityScript.Steps.ProcessUnityScriptMethods), new AltProcessUnityScriptMethods());
 
-        pipeline.Add(new CSharpPrintTransformer());
+        // add rewrite needed steps
+        pipeline.Add(new InjectExplicitBooleanConversion());
+        pipeline.Add(new CSharpRewriteTransformer());
     }
 
     public CompilerBuilder AdjustWriteCSharpPipeline()

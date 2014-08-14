@@ -10,13 +10,13 @@ using Boo.Lang.Compiler.Steps;
 namespace US2CS
 {
 
-class CSharpPrintTransformer : AbstractTransformerCompilerStep
+class CSharpRewriteTransformer : AbstractTransformerCompilerStep
 {
     private List<string> _importsNames;
     private TypeDefinition _currentDefinition;
     private CodeSerializer _serializer;
 
-    public CSharpPrintTransformer()
+    public CSharpRewriteTransformer()
     {
         _importsNames = new List<string>();
         _serializer = new CodeSerializer();
@@ -84,22 +84,32 @@ class CSharpPrintTransformer : AbstractTransformerCompilerStep
         }
         else if (method.Name.StartsWith("get_"))
         {
-            UnresolveSimpleIndexing(node, method);
+            UnresolveSimpleGetter(node, method);
         }
 
         base.OnMethodInvocationExpression(node);
     }
 
-    private bool UnresolveSimpleIndexing(MethodInvocationExpression node, IMethod method)
+    private bool UnresolveSimpleGetter(MethodInvocationExpression node, IMethod method)
     {
         var getterName = method.Name.Substring(4);
-        if (getterName != "Item")
+        Expression replacementExpression = null;
+
+        if (getterName == "Item")
         {
-            return false;
+            replacementExpression = CodeBuilder.CreateSlicing(node.Arguments[0], 0);
+        }
+        else if (getterName == "HasValue")
+        {
+            // FIXME untested
+            replacementExpression = CodeBuilder.CreateMemberReference((IMember)NameResolutionService.ResolveMember(method.DeclaringType, "HasValue", EntityType.Property));
+            Trace.Assert(node.Arguments.Count == 0, "didn't expect non conventional HasValue getter.");
+        }
+        else
+        {
+            Trace.Fail("unknown getter: " + getterName);
         }
 
-        var slicing = CodeBuilder.CreateSlicing(node.Arguments[0], 0);
-        node.ParentNode.Replace(node, slicing);
 
         return true;
     }
