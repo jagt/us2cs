@@ -658,6 +658,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnDeclarationStatement(DeclarationStatement node)
     {
+        WriteIndented();
         Visit(node.Declaration);
         if (node.Initializer != null)
         {
@@ -1019,8 +1020,8 @@ class CSharpPrinterVisitor : TextEmitter
 
         if (node.IsByRef) WriteKeyword("ref ");
 
-        Write(node.Name);
         WriteTypeReference(node.Type);
+        Write(node.Name);
 
         if (node.ParentNode != null)
         {
