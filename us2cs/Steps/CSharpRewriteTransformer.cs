@@ -39,6 +39,7 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         base.OnStructDefinition(node);
     }
 
+    // rewrite constructor name
     public override void OnConstructor(Constructor node)
     {
         node.Name = _currentDefinition.Name;
@@ -50,6 +51,7 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         var reference = node.Target as ReferenceExpression;
         if (reference == null || reference.Entity == null || reference.Entity.EntityType != EntityType.Method)
         {
+            base.OnMethodInvocationExpression(node);
             return;
         }
 

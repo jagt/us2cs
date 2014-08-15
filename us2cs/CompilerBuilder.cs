@@ -254,11 +254,12 @@ class CompilerBuilder
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessClosures));
         pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessGenerators));
         // remove 'transform.position.x += 2' handling, we'll do it by our self
-        pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessAssignmentsToValueTypeMembers));
+        //pipeline.Remove(typeof(Boo.Lang.Compiler.Steps.ProcessAssignmentsToValueTypeMembers));
 
         pipeline.Replace(typeof(UnityScript.Steps.ProcessUnityScriptMethods), new AltProcessUnityScriptMethods());
 
         // add rewrite needed steps
+        pipeline.Add(new ProcessBuiltinFunction());
         pipeline.Add(new InjectExplicitBooleanConversion());
         pipeline.Add(new CSharpRewriteTransformer());
     }

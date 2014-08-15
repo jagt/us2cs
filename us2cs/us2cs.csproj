@@ -81,6 +81,7 @@
     <Compile Include="Steps\CSharpRewriteTransformer.cs" />
     <Compile Include="Steps\InjectExplicitBooleanConversion.cs" />
     <Compile Include="Steps\PrintCSharp.cs" />
+    <Compile Include="Steps\ProcessBuiltinFunction.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Steps\WritePrinterStep.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -16,8 +16,11 @@ namespace US2CS
 // modified on BooPrinterVisitor
 class CSharpPrinterVisitor : TextEmitter
 {
+    private bool _isStatementInline;
+
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
     {
+        _isStatementInline = false;
     }
 
     public void Print(CompileUnit ast)
@@ -498,7 +501,8 @@ class CSharpPrinterVisitor : TextEmitter
 
     void WriteProcessedType(IType type)
     {
-        Write(RenameTypeMap.ContainsKey(type.Name) ? RenameTypeMap[type.Name] : type.Name);
+        var rawName = type.DisplayName();
+        Write(RenameTypeMap.ContainsKey(rawName) ? RenameTypeMap[rawName] : rawName);
     }
 
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
@@ -571,9 +575,12 @@ class CSharpPrinterVisitor : TextEmitter
     {
         WriteParameterList(node.Parameters);
         // noway C# lambda can specify return type ?
-        Write(" => ");
-        WriteBlock(node.Body);
-        WriteComma();
+        Write("=>");
+        _isStatementInline = true;
+        Write("{");
+        Visit(node.Body.Statements);
+        Write("}");
+        _isStatementInline = false;
     }
 
     public override void OnBoolLiteralExpression(BoolLiteralExpression node)
@@ -785,7 +792,7 @@ class CSharpPrinterVisitor : TextEmitter
         Visit(node.Modifier);
         Visit(node.Expression);
         WriteComma();
-        WriteLine();
+        if (!_isStatementInline) WriteLine();
     }
 
     public override void OnExtendedGeneratorExpression(ExtendedGeneratorExpression node)
@@ -1094,7 +1101,7 @@ class CSharpPrinterVisitor : TextEmitter
         Visit(node.Expression);
         Visit(node.Modifier);
         WriteComma();
-        WriteLine();
+        if (!_isStatementInline) WriteLine();
     }
 
     public override void OnSelfLiteralExpression(SelfLiteralExpression node)
