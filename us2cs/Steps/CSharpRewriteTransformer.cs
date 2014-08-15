@@ -12,13 +12,11 @@ namespace US2CS
 
 class CSharpRewriteTransformer : AbstractTransformerCompilerStep
 {
-    private List<string> _importsNames;
     private TypeDefinition _currentDefinition;
     private CodeSerializer _serializer;
 
     public CSharpRewriteTransformer()
     {
-        _importsNames = new List<string>();
         _serializer = new CodeSerializer();
     }
 
@@ -28,28 +26,6 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         Visit(CompileUnit);
     }
 
-    public override void OnModule(Module node)
-    {
-        Visit(node.Imports);
-        Visit(node.Members);
-    }
-
-    public override void OnImport(Import node)
-    {
-        _importsNames.Add(node.Namespace);
-    }
-
-    // FIXME doesn't work on all places yet
-    public override void OnSimpleTypeReference(SimpleTypeReference node)
-    {
-        foreach (var spaceName in _importsNames)
-        {
-            if (node.Name.StartsWith(spaceName) && node.Name.Substring(0, spaceName.Length + 1).Count((c) => (c == '.')) == 0)
-            {
-                node.Name = node.Name.Substring(0, spaceName.Length + 1);
-            }
-        }
-    }
 
     public override void OnClassDefinition(ClassDefinition node)
     {
@@ -110,6 +86,11 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
             Trace.Fail("unknown getter: " + getterName);
         }
 
+        if (replacementExpression != null)
+        {
+            node.ParentNode.Replace(node, replacementExpression);
+            return true;
+        }
 
         return true;
     }

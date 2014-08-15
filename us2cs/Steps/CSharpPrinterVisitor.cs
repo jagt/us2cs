@@ -8,6 +8,7 @@ using Boo.Lang.Compiler.Ast.Visitors;
 using Attribute = Boo.Lang.Compiler.Ast.Attribute;
 using System.Globalization;
 using Boo.Lang.Compiler.TypeSystem.Internal;
+using Boo.Lang.Compiler.TypeSystem;
 
 namespace US2CS
 {
@@ -482,6 +483,24 @@ class CSharpPrinterVisitor : TextEmitter
 
     #endregion
 
+    readonly Dictionary<string, string> RenameTypeMap = new Dictionary<string,string> {
+        {"boolean", "bool"},
+        {"Regex", "System.Text.RegularExpressions.Regex"},
+        {"Function", "Boo.Lang.Callable"},
+        {"Number", "double"},
+        {"Array", "Unity.Lang.Array"}
+    };
+
+    void WriteProcessedType(SimpleTypeReference node)
+    {
+        Write(RenameTypeMap.ContainsKey(node.Name) ? RenameTypeMap[node.Name] : node.Name);
+    }
+
+    void WriteProcessedType(IType type)
+    {
+        Write(RenameTypeMap.ContainsKey(type.Name) ? RenameTypeMap[type.Name] : type.Name);
+    }
+
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
     {
         Write("new ");
@@ -934,7 +953,10 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnLocal(Local node)
     {
         // TODO should be a better way to handle this
-        WriteIndented("{1} {0};", node.Name, ((InternalLocal)(node.Entity)).Type);
+        WriteIndented();
+        WriteProcessedType(((InternalLocal)(node.Entity)).Type);
+        Write(" ");
+        Write(node.Name);
         WriteLine();
     }
 
@@ -1021,6 +1043,7 @@ class CSharpPrinterVisitor : TextEmitter
         if (node.IsByRef) WriteKeyword("ref ");
 
         WriteTypeReference(node.Type);
+        Write(" ");
         Write(node.Name);
 
         if (node.ParentNode != null)
@@ -1081,7 +1104,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnSimpleTypeReference(SimpleTypeReference node)
     {
-        Write(node.Name);
+        WriteProcessedType(node);
     }
 
     public override void OnSlice(Slice node)
