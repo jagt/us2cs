@@ -960,10 +960,13 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnLocal(Local node)
     {
         // TODO should be a better way to handle this
+        var local = (InternalLocal)node.Entity;
         WriteIndented();
-        WriteProcessedType(((InternalLocal)(node.Entity)).Type);
+        WriteProcessedType(local.Type);
         Write(" ");
         Write(node.Name);
+        WriteComma();
+        WriteImplementationComment("private: " + local.IsPrivateScope);
         WriteLine();
     }
 
