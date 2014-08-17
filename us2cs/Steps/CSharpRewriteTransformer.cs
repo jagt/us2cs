@@ -75,7 +75,9 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
 
         if (getterName == "Item")
         {
-            replacementExpression = CodeBuilder.CreateSlicing(node.Arguments[0], 0);
+            var memberRefExpre = node.Target as MemberReferenceExpression;
+            Trace.Assert(memberRefExpre != null, "get_Index lhs should be member ref.");
+            replacementExpression = CodeBuilder.CreateSlicing(memberRefExpre.Target, 0);
         }
         else if (getterName == "HasValue")
         {
