@@ -59,7 +59,9 @@ class CSharpPrinterVisitor : TextEmitter
 
     void WriteStringLiteral(string text)
     {
-        BooPrinterVisitor.WriteStringLiteral(text, _writer);
+        Write("\"");
+        BooPrinterVisitor.WriteStringLiteralContents(text, _writer, true);
+        Write("\"");
     }
 
     void WriteAttribute(Attribute attribute)
@@ -122,8 +124,6 @@ class CSharpPrinterVisitor : TextEmitter
     void WriteModifiers(TypeMember member)
     {
         WriteIndented();
-        if (member.IsPartial)
-            WriteKeyword("partial ");
         if (member.IsPublic)
             WriteKeyword("public ");
         else if (member.IsProtected)
@@ -146,6 +146,8 @@ class CSharpPrinterVisitor : TextEmitter
             WriteKeyword("new ");
         if (member.HasTransientModifier)
             WriteKeyword("transient ");
+        if (member.IsPartial) // c# partial needs to appear right before class/struct
+            WriteKeyword("partial ");
     }
 
     private void WriteOptionalModifiers(TypeMember node)
@@ -420,8 +422,23 @@ class CSharpPrinterVisitor : TextEmitter
         WriteIndented("// impl {0}", comment);
     }
 
+    // a hack to remove super()
+    void ProcessSuperConstructor(Method node)
+    {
+        if (node.Body.Statements.Count == 0) return;
+        var baseInvokeStmt = node.Body.Statements[0] as ExpressionStatement;
+        var baseInvokeExpr = baseInvokeStmt.Expression as MethodInvocationExpression;
+        if (baseInvokeExpr == null) return;
+        else if (baseInvokeExpr.Target is SuperLiteralExpression)
+        {
+            Write(" : ");
+            Visit(baseInvokeStmt.Expression);
+        }
+        node.Body.Statements.Remove(baseInvokeStmt);
+    }
+
     enum CallableType { Constructor, Destructor, Usual }
-    void WriteCallableDefinitionHeader(CallableDefinition node, CallableType ct)
+    void WriteCallableDefinitionHeader(Method node, CallableType ct)
     {
         WriteAttributes(node.Attributes, true);
         WriteOptionalModifiers(node);
@@ -453,6 +470,11 @@ class CSharpPrinterVisitor : TextEmitter
 
         WriteParameterList(node.Parameters);
 
+        if (ct == CallableType.Constructor)
+        {
+            ProcessSuperConstructor(node);
+        }
+
         Trace.Assert(node.ReturnTypeAttributes.Count == 0, "shouldnt get return type attributes");
     }
 
@@ -470,7 +492,6 @@ class CSharpPrinterVisitor : TextEmitter
         {
             BeginBlock();
             Visit(node.Locals);
-            if (node.Locals.Count > 0) WriteLine();
             Visit(node.Body.Statements);
             EndBlock();
         }
@@ -994,7 +1015,8 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
         var entity = TypeSystemServices.GetEntity(node.Target);
-        if (entity.EntityType == EntityType.Constructor)
+        if (entity.EntityType == EntityType.Constructor
+            && !(node.Target is SuperLiteralExpression))
         {
             Write("new ");
         }
@@ -1301,7 +1323,7 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnYieldStatement(YieldStatement node)
     {
         WriteIndented();
-        WriteKeyword("yield return");
+        WriteKeyword("yield return ");
         Visit(node.Expression);
         Visit(node.Modifier);
         WriteComma();
