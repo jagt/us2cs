@@ -14,7 +14,6 @@ namespace US2CS
 class ProcessBuiltinFunction : AbstractTransformerCompilerStep
 {
     private bool _shouldRemoveExpression;
-    private Block _currentBlock;
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
@@ -27,10 +26,9 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
         base.OnMethodInvocationExpression(node);
     }
 
-    /*
     public override bool EnterExpressionStatement(ExpressionStatement node)
     {
-        _shouldRemoveExpression = false; // FIXME might need to use a stack
+        _shouldRemoveExpression = false;
         return base.EnterExpressionStatement(node);
     }
 
@@ -43,16 +41,15 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
 
         base.LeaveExpressionStatement(node);
     }
-    */
 
     void ProcessBuiltin(MethodInvocationExpression node, BuiltinFunction builtin)
     {
         // csharp init value type automatically
         if (builtin.FunctionType == BuiltinFunctionType.InitValueType)
         {
-            if (node.ParentNode != null && node.ParentNode.NodeType != NodeType.ExpressionStatement)
+            if (node.ParentNode != null && node.ParentNode.NodeType == NodeType.ExpressionStatement)
             {
-                node.ParentNode.Replace(node, node.Arguments[0]);
+                _shouldRemoveExpression = true;
             }
         }
         else if (builtin.FunctionType == BuiltinFunctionType.Eval)
@@ -63,7 +60,6 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
 
     void OnEval(MethodInvocationExpression node)
     {
-        Console.WriteLine(node.LexicalInfo + "|" + node);
         var lambdaBody = new BlockExpression(node.LexicalInfo);
         var firstAssignment = node.Arguments[0] as BinaryExpression;
         if (firstAssignment != null
@@ -76,30 +72,38 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
             {
                 var declaration = new Declaration(localReference.Name, new SimpleTypeReference(localReference.Type.DisplayName()));
                 var declarationStmt = new DeclarationStatement(declaration, firstAssignment.Right);
-                Console.WriteLine(declarationStmt);
-                Visit(firstAssignment.Right);
                 lambdaBody.Body.Add(declarationStmt);
             }
             else
             {
-                Visit(node.Arguments[0]);
                 lambdaBody.Body.Add(firstAssignment);
             }
         }
         else
         {
-            Visit(node.Arguments[0]);
-            lambdaBody.Body.Add(node.Arguments[0]);
+            var firstInitObj = node.Arguments[0] as MethodInvocationExpression;
+            if (TypeSystemServices.GetEntity(firstInitObj.Target) == BuiltinFunction.InitValueType)
+            {
+                var valueTypeRef = (ReferenceExpression)firstInitObj.Arguments[0];
+                var localReference = valueTypeRef.Entity as InternalLocal;
+                Trace.Assert(localReference != null, "initobj on non private local");
+                var declaration = new Declaration(localReference.Name, new SimpleTypeReference(localReference.Type.DisplayName()));
+                var declarationStmt = new DeclarationStatement();
+                declarationStmt.Declaration = declaration;
+                lambdaBody.Body.Add(declarationStmt);
+            }
+            else
+            {
+                lambdaBody.Body.Add(node.Arguments[0]);
+            }
         }
 
         for (int ix = 1; ix < node.Arguments.Count - 1; ix++)
         {
-            Visit(node.Arguments[ix]);
             lambdaBody.Body.Add(node.Arguments[ix]);
         }
 
         var lastArgument = node.Arguments[-1];
-        Visit(node.Arguments[-1]);
         lambdaBody.Body.Add(new ReturnStatement(node.Arguments[-1]));
 
         // create a inplace labmda invocation like:
@@ -108,6 +112,8 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
         var castExpr = new CastExpression(lambdaBody, funcTypeRef);
         var invokeExpr = new MethodInvocationExpression(castExpr);
         ReplaceCurrentNode(invokeExpr);
+
+        Visit(lambdaBody);
     }
 
 

@@ -16,12 +16,12 @@ namespace US2CS
 // modified on BooPrinterVisitor
 class CSharpPrinterVisitor : TextEmitter
 {
-    private bool _isStatementInline;
+    private int _isStatementInline;
     private CodeSerializer _serializer;
 
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
     {
-        _isStatementInline = false;
+        _isStatementInline = 0;
         _serializer = new CodeSerializer();
     }
 
@@ -575,11 +575,11 @@ class CSharpPrinterVisitor : TextEmitter
         WriteParameterList(node.Parameters);
         // noway C# lambda can specify return type ?
         Write("=>");
-        _isStatementInline = true;
+        _isStatementInline++;
         Write("{");
         Visit(node.Body.Statements);
         Write("}");
-        _isStatementInline = false;
+        _isStatementInline--;
     }
 
     public override void OnBoolLiteralExpression(BoolLiteralExpression node)
@@ -609,12 +609,12 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnCastExpression(CastExpression node)
     {
-        Write("(");
+        Write("((");
         Visit(node.Type);
         Write(")");
         Write("(");
         Visit(node.Target);
-        Write(")");
+        Write("))");
     }
 
     public override void OnCharLiteralExpression(CharLiteralExpression node)
@@ -693,7 +693,7 @@ class CSharpPrinterVisitor : TextEmitter
             Visit(node.Initializer);
         }
         WriteComma();
-        if (!_isStatementInline) WriteLine();
+        if (_isStatementInline == 0) WriteLine();
     }
 
     public override void OnDestructor(Destructor node)
@@ -793,7 +793,7 @@ class CSharpPrinterVisitor : TextEmitter
         Visit(node.Modifier);
         Visit(node.Expression);
         WriteComma();
-        if (!_isStatementInline) WriteLine();
+        if (_isStatementInline == 0) WriteLine();
     }
 
     public override void OnExtendedGeneratorExpression(ExtendedGeneratorExpression node)
@@ -1113,7 +1113,7 @@ class CSharpPrinterVisitor : TextEmitter
         Visit(node.Expression);
         Visit(node.Modifier);
         WriteComma();
-        if (!_isStatementInline) WriteLine();
+        if (_isStatementInline == 0) WriteLine();
     }
 
     public override void OnSelfLiteralExpression(SelfLiteralExpression node)
