@@ -108,7 +108,7 @@ class ProcessBuiltinFunction : AbstractTransformerCompilerStep
 
         // create a inplace labmda invocation like:
         // ((Func<bool>)(() => { int a = 2; return true; }))();
-        var funcTypeRef = new GenericTypeReference("Func", new SimpleTypeReference(lastArgument.ExpressionType.DisplayName()));
+        var funcTypeRef = new GenericTypeReference("System.Func", new SimpleTypeReference(lastArgument.ExpressionType.DisplayName()));
         var castExpr = new CastExpression(lambdaBody, funcTypeRef);
         var invokeExpr = new MethodInvocationExpression(castExpr);
         ReplaceCurrentNode(invokeExpr);

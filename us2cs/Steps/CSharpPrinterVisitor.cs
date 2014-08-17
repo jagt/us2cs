@@ -19,6 +19,7 @@ class CSharpPrinterVisitor : TextEmitter
 {
     private int _isStatementInline;
     private CodeSerializer _serializer;
+    private Method _currentMethod;
 
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
     {
@@ -515,7 +516,8 @@ class CSharpPrinterVisitor : TextEmitter
         {"Regex", "System.Text.RegularExpressions.Regex"},
         {"Function", "Boo.Lang.Callable"},
         {"Number", "double"},
-        {"Array", "Unity.Lang.Array"}
+        {"Array", "Unity.Lang.Array"},
+        {"String", "string"},
     };
 
     void WriteProcessedType(SimpleTypeReference node)
@@ -1010,6 +1012,7 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnMethod(Method node)
     {
+        _currentMethod = node;
         WriteCallableDefinition(node, CallableType.Usual);
     }
 
@@ -1350,8 +1353,19 @@ class CSharpPrinterVisitor : TextEmitter
     public override void OnYieldStatement(YieldStatement node)
     {
         WriteIndented();
-        WriteKeyword("yield return ");
-        Visit(node.Expression);
+        if (node.Expression == CSharpRewriteTransformer.YieldBreakExpression)
+        {
+            Write("yield break");
+        }
+        else if (node.Expression == null)
+        {
+            Write("yield return null");
+        }
+        else
+        {
+            WriteKeyword("yield return ");
+            Visit(node.Expression);
+        }
         Visit(node.Modifier);
         WriteComma();
         WriteLine();

@@ -6,14 +6,32 @@ using System.Text;
 using Boo.Lang.Compiler.Ast;
 using Boo.Lang.Compiler.TypeSystem;
 using Boo.Lang.Compiler.Steps;
+using Boo.Lang.Compiler.TypeSystem.Internal;
 
 namespace US2CS
 {
 
+
 class CSharpRewriteTransformer : AbstractTransformerCompilerStep
 {
     private TypeDefinition _currentDefinition;
+    private Method _currentMethod;
     private CodeSerializer _serializer;
+
+    class BreakDummyExpression : Expression
+    {
+        public override NodeType NodeType
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public override void Accept(IAstVisitor visitor)
+        {
+            // pass
+        }
+    }
+
+    public static readonly Expression YieldBreakExpression = new BreakDummyExpression();
 
     public CSharpRewriteTransformer()
     {
@@ -44,7 +62,6 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     {
         node.Name = _currentDefinition.Name;
     }
-
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
@@ -157,6 +174,30 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     {
         node.Name = node.Name.Replace("$", "tmp");
         base.OnDeclaration(node);
+    }
+
+    // replace return in coroutines with yield break
+    public override void OnMethod(Method node)
+    {
+        _currentMethod = node;
+
+        base.OnMethod(node);
+    }
+
+    public override void OnReturnStatement(ReturnStatement node)
+    {
+        InternalMethod entity = (InternalMethod)(_currentMethod.Entity);
+        if (entity != null && entity.IsGenerator)
+        {
+            var yieldBreak = new YieldStatement(YieldBreakExpression);
+            ReplaceCurrentNode(yieldBreak);
+
+        }
+        else
+        {
+            base.OnReturnStatement(node);
+        }
+
     }
 
 }
