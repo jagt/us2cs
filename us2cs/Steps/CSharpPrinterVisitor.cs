@@ -509,7 +509,6 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
     {
-        Console.WriteLine(_serializer.Serialize(node) + "|||" + (node.Type == null?"<null>":node.Type.ToString()));
         Write("new ");
         WriteProcessedType(node.ExpressionType.ElementType);
         Write("[] {");
@@ -994,6 +993,12 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
+        var entity = TypeSystemServices.GetEntity(node.Target);
+        if (entity.EntityType == EntityType.Constructor)
+        {
+            Write("new ");
+        }
+
         Visit(node.Target);
         Write("(");
         WriteCommaSeparatedList(node.Arguments);
