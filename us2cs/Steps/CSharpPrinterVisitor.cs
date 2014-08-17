@@ -17,10 +17,12 @@ namespace US2CS
 class CSharpPrinterVisitor : TextEmitter
 {
     private bool _isStatementInline;
+    private CodeSerializer _serializer;
 
     public CSharpPrinterVisitor(TextWriter writer) : base(writer)
     {
         _isStatementInline = false;
+        _serializer = new CodeSerializer();
     }
 
     public void Print(CompileUnit ast)
@@ -507,11 +509,9 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnArrayLiteralExpression(ArrayLiteralExpression node)
     {
+        Console.WriteLine(_serializer.Serialize(node) + "|||" + (node.Type == null?"<null>":node.Type.ToString()));
         Write("new ");
-        if (node.Type != null)
-        {
-            node.Type.ElementType.Accept(this);
-        }
+        WriteProcessedType(node.ExpressionType.ElementType);
         Write("[] {");
         for (int i = 0; i < node.Items.Count; i++)
         {

@@ -136,6 +136,13 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     {
         node.Name = node.Name.Replace("$", "tmp");
         base.OnReferenceExpression(node);
+
+        // rewrite type literals
+        if (GetExpressionType(node) == TypeSystemServices.TypeType)
+        {
+            var typeofExpr = new TypeofExpression(node.LexicalInfo, new SimpleTypeReference(node.Name));
+            ReplaceCurrentNode(typeofExpr);
+        }
     }
 
     public override void OnLocal(Local node)
