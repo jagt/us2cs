@@ -9,6 +9,7 @@ using Attribute = Boo.Lang.Compiler.Ast.Attribute;
 using System.Globalization;
 using Boo.Lang.Compiler.TypeSystem.Internal;
 using Boo.Lang.Compiler.TypeSystem;
+using MethodInfo = System.Reflection.MethodInfo;
 
 namespace US2CS
 {
@@ -1012,25 +1013,51 @@ class CSharpPrinterVisitor : TextEmitter
         WriteCallableDefinition(node, CallableType.Usual);
     }
 
+    MethodInfo GetMethodInfo(IEntity entity)
+    {
+        return (MethodInfo)((ExternalMethod)entity).MethodInfo;
+    }
+
+    void WriteCommaSeperatedArgumentsWithMethodInfo(MethodInfo methodInfo, ExpressionCollection arguments)
+    {
+        var ix = 0;
+        foreach (var para in methodInfo.GetParameters())
+        {
+            if (ix > 0) Write(", ");
+            if (para.IsOut) Write("out ");
+            else if (para.ParameterType.IsByRef) Write("ref ");
+
+            Visit(arguments[ix++]);
+        }
+    }
+
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)
     {
+        Trace.Assert(node.NamedArguments.Count == 0);
+
         var entity = TypeSystemServices.GetEntity(node.Target);
+        MethodInfo methodInfo = null;
         if (entity.EntityType == EntityType.Constructor
             && !(node.Target is SuperLiteralExpression))
         {
             Write("new ");
         }
+        else if (entity.EntityType == EntityType.Method
+            && entity is ExternalMethod)
+        {
+            // hack to get the out/ref arguments right
+            methodInfo = GetMethodInfo(entity);
+        }
 
         Visit(node.Target);
         Write("(");
-        WriteCommaSeparatedList(node.Arguments);
-        if (node.NamedArguments.Count > 0)
+        if (methodInfo == null)
         {
-            if (node.Arguments.Count > 0)
-            {
-                Write(", ");
-            }
-            WriteCommaSeparatedList(node.NamedArguments);
+            WriteCommaSeparatedList(node.Arguments);
+        }
+        else
+        {
+            WriteCommaSeperatedArgumentsWithMethodInfo(methodInfo, node.Arguments);
         }
         Write(")");
     }
