@@ -61,6 +61,10 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     public override void OnConstructor(Constructor node)
     {
         node.Name = _currentDefinition.Name;
+
+        if (node.IsStatic) node.Modifiers &= ~TypeMemberModifiers.Private;
+
+        base.OnConstructor(node);
     }
 
     public override void OnMethodInvocationExpression(MethodInvocationExpression node)

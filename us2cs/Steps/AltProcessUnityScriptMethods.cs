@@ -21,6 +21,9 @@ class AltProcessUnityScriptMethods : ProcessUnityScriptMethods
         node.Iterator = ProcessIterator(node.Iterator, node.Declarations);
         VisitForStatementBlock(node);
     }
+
+    // FIXME skip flush initializers or unflush initializers
+
 }
 
 }
