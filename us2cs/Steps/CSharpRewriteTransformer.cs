@@ -131,6 +131,25 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         return false;
     }
 
+    // rewrite local names
+    public override void OnReferenceExpression(ReferenceExpression node)
+    {
+        node.Name = node.Name.Replace("$", "tmp");
+        base.OnReferenceExpression(node);
+    }
+
+    public override void OnLocal(Local node)
+    {
+        node.Name = node.Name.Replace("$", "tmp");
+        base.OnLocal(node);
+    }
+
+    public override void OnDeclaration(Declaration node)
+    {
+        node.Name = node.Name.Replace("$", "tmp");
+        base.OnDeclaration(node);
+    }
+
 }
 
 }

@@ -613,7 +613,9 @@ class CSharpPrinterVisitor : TextEmitter
         Write("(");
         Visit(node.Type);
         Write(")");
+        Write("(");
         Visit(node.Target);
+        Write(")");
     }
 
     public override void OnCharLiteralExpression(CharLiteralExpression node)
@@ -692,7 +694,7 @@ class CSharpPrinterVisitor : TextEmitter
             Visit(node.Initializer);
         }
         WriteComma();
-        WriteLine();
+        if (!_isStatementInline) WriteLine();
     }
 
     public override void OnDestructor(Destructor node)
@@ -961,12 +963,14 @@ class CSharpPrinterVisitor : TextEmitter
     {
         // TODO should be a better way to handle this
         var local = (InternalLocal)node.Entity;
+        // skip private scope locals, as they're wrapped into declaration in lambdas
+        if (local.IsPrivateScope) return;
+
         WriteIndented();
         WriteProcessedType(local.Type);
         Write(" ");
         Write(node.Name);
         WriteComma();
-        WriteImplementationComment("private: " + local.IsPrivateScope);
         WriteLine();
     }
 
