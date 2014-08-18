@@ -62,7 +62,7 @@ class CSharpPrinterVisitor : TextEmitter
     void WriteStringLiteral(string text)
     {
         Write("\"");
-        BooPrinterVisitor.WriteStringLiteralContents(text, _writer, true);
+        BooPrinterVisitor.WriteStringLiteralContents(text, _writer, false);
         Write("\"");
     }
 
@@ -544,7 +544,6 @@ class CSharpPrinterVisitor : TextEmitter
             Visit(node.Items[i]);
         }
         Write("}");
-        WriteComma();
     }
 
     public override void OnArrayTypeReference(ArrayTypeReference node)

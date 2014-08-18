@@ -88,10 +88,34 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         {
             UnresolveSimpleGetter(node, method);
         }
+        else if (method.Name.StartsWith("set_"))
+        {
+            UnresolveSimpleSetter(node, method);
+        }
 
         base.OnMethodInvocationExpression(node);
     }
 
+    private bool UnresolveSimpleSetter(MethodInvocationExpression node, IMethod method)
+    {
+        var setterName = method.Name.Substring(4);
+        Trace.Assert(setterName == "Item", "shouldn't have other setters");
+
+        var memberRefExpression = node.Target as MemberReferenceExpression;
+        Trace.Assert(memberRefExpression != null, "set_Item lhs should be member ref");
+        var slicingExpression = new SlicingExpression();
+        slicingExpression.Target = memberRefExpression.Target;
+        for (var ix = 0; ix < node.Arguments.Count - 1; ix++)
+        {
+            slicingExpression.Indices.Add(new Slice(node.Arguments[ix]));
+        }
+
+        var assignment = CodeBuilder.CreateAssignment(slicingExpression, node.Arguments[-1]);
+        ReplaceCurrentNode(assignment);
+
+        return true;
+    }
+    
     private bool UnresolveSimpleGetter(MethodInvocationExpression node, IMethod method)
     {
         var getterName = method.Name.Substring(4);
@@ -99,9 +123,15 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
 
         if (getterName == "Item")
         {
-            var memberRefExpre = node.Target as MemberReferenceExpression;
-            Trace.Assert(memberRefExpre != null, "get_Index lhs should be member ref.");
-            replacementExpression = CodeBuilder.CreateSlicing(memberRefExpre.Target, 0);
+            var memberRefExpression = node.Target as MemberReferenceExpression;
+            Trace.Assert(memberRefExpression != null, "get_Index lhs should be member ref.");
+            var slicingExpression = new SlicingExpression();
+            slicingExpression.Target = memberRefExpression.Target;
+            foreach (var argument in node.Arguments)
+            {
+                slicingExpression.Indices.Add(new Slice(argument));
+            }
+            replacementExpression = slicingExpression;
         }
         else if (getterName == "HasValue")
         {
