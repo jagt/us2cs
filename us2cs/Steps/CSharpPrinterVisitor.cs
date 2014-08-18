@@ -528,6 +528,8 @@ class CSharpPrinterVisitor : TextEmitter
     void WriteProcessedType(IType type)
     {
         var rawName = type.DisplayName();
+        // a hack to transform List.<int> into List<int>
+        rawName = rawName.Replace(".<", "<");
         Write(RenameTypeMap.ContainsKey(rawName) ? RenameTypeMap[rawName] : rawName);
     }
 
@@ -1302,9 +1304,11 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnTypeofExpression(TypeofExpression node)
     {
-        Write("typeof(");
+        var needTypeOf = node.ParentNode.NodeType != NodeType.GenericReferenceExpression;
+
+        if (needTypeOf) Write("typeof(");
         Visit(node.Type);
-        Write(")");
+        if (needTypeOf) Write(")");
     }
 
     public override void OnUnaryExpression(UnaryExpression node)
@@ -1343,7 +1347,9 @@ class CSharpPrinterVisitor : TextEmitter
         WriteLine();
         WriteIndented();
         WriteKeyword("while ");
+        Write("(");
         Visit(node.Condition);
+        Write(")");
         WriteBlock(node.Block);
 
         Trace.Assert(node.OrBlock == null, "shoudn't get or block");

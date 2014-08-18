@@ -7,6 +7,7 @@ using Boo.Lang.Compiler.Ast;
 using Boo.Lang.Compiler.TypeSystem;
 using Boo.Lang.Compiler.Steps;
 using Boo.Lang.Compiler.TypeSystem.Internal;
+using System.Text.RegularExpressions;
 
 namespace US2CS
 {
@@ -17,6 +18,7 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     private TypeDefinition _currentDefinition;
     private Method _currentMethod;
     private CodeSerializer _serializer;
+    private Regex _stripGenericPat;
 
     class BreakDummyExpression : Expression
     {
@@ -36,6 +38,7 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
     public CSharpRewriteTransformer()
     {
         _serializer = new CodeSerializer();
+        _stripGenericPat = new Regex(@"(.+)\.<.+>$");
     }
 
     public override void Run()
@@ -163,7 +166,12 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         // rewrite type literals
         if (GetExpressionType(node) == TypeSystemServices.TypeType)
         {
-            var typeofExpr = new TypeofExpression(node.LexicalInfo, new SimpleTypeReference(node.Name));
+            var type = (IType)(node.Entity);
+            // hack to get only the non generic part
+            var typeName = type.DisplayName();
+            var match = _stripGenericPat.Match(typeName);
+            if (match.Success) typeName = match.Groups[1].Value;
+            var typeofExpr = new TypeofExpression(node.LexicalInfo, new SimpleTypeReference(typeName));
             ReplaceCurrentNode(typeofExpr);
         }
     }
