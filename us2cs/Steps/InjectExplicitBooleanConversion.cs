@@ -22,7 +22,8 @@ class InjectExplicitBooleanConversion : AbstractNamespaceSensitiveTransformerCom
             return expression;
         }
 
-        Trace.Assert(!TypeSystemServices.IsError(expression), "shouldn't have error boolean expression.");
+        // happening
+        //Trace.Assert(!TypeSystemServices.IsError(expression), "shouldn't have error boolean expression.");
 
         if (TypeSystemServices.IsNumber(type) || type.IsEnum)
         {

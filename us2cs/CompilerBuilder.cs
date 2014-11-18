@@ -18,6 +18,9 @@ namespace US2CS
 
 class CompilerBuilder
 {
+    private const string DEFAULT_UNITY_INSTALLATION = "C:/Program Files (x86)/Unity";
+    private const string DEFAULT_UNITY_LONGVER = "C:/Program Files (x86)/Unity";
+
     public List<string> References { get; set; }
     public List<string> Resources { get; set; }
     public List<string> Imports { get; set; }
@@ -67,10 +70,19 @@ class CompilerBuilder
         Execute = false;
     }
 
+    public CompilerBuilder SetupUnityProject(string projectRoot, string sourceRoot, string unityInstallation = DEFAULT_UNITY_INSTALLATION, string unityLongVersion = DEFAULT_UNITY_LONGVER)
+    {
+        Console.WriteLine(projectRoot);
+        Console.WriteLine(sourceRoot);
+        var files = Directory.GetFiles(Path.Combine(projectRoot, sourceRoot), "*.js", SearchOption.AllDirectories);
+        Console.WriteLine(files.Length);
+        return SetupUnityProject(projectRoot, files, unityInstallation, unityLongVersion);
+    }
+
     // default compiler options from Unity 4.5, can be seen in Editor.log when there's
     // error in the code
     // unityLongVersion : UNITY_4_5_2
-    public CompilerBuilder SetupUnityProject(string projectRoot, string[] sourceFiles, string unityInstallation = "C:/Program Files (x86)/Unity", string unityLongVersion = "UNITY_4_5_2")
+    public CompilerBuilder SetupUnityProject(string projectRoot, string[] sourceFiles, string unityInstallation = DEFAULT_UNITY_INSTALLATION, string unityLongVersion = DEFAULT_UNITY_LONGVER)
     {
         UnityProjectRoot = projectRoot;
 
@@ -125,6 +137,9 @@ class CompilerBuilder
             "UNITY_EDITOR_WIN",
             "UNITY_TEAM_LICENSE",
             "UNITY_PRO_LICENSE",
+            // temporate hacks
+            "HSOD_DEVELOP",
+            "HSOD_BRANCH_APPSTORE_CN"
         });
 
         References.AddRange(new List<string> { 
@@ -132,6 +147,9 @@ class CompilerBuilder
             projectRoot + "/Library/ScriptAssemblies/Assembly-CSharp-firstpass.dll",
             projectRoot + "/Library/ScriptAssemblies/Assembly-UnityScript-firstpass.dll",
             unityInstallation + "/Editor/Data/Managed/UnityEditor.dll",
+            // temporate hacks
+            projectRoot + "/Assets/Plugins/SimpleJSON/ICSharpCode.SharpZipLib.dll",
+            projectRoot + "/Assets/Plugins/P31RestKit.dll"
         });
 
         Imports.Add("UnityEditor");

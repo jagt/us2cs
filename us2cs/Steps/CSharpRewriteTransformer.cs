@@ -141,7 +141,8 @@ class CSharpRewriteTransformer : AbstractTransformerCompilerStep
         }
         else
         {
-            Trace.Fail("unknown getter: " + getterName);
+            // temporate hack
+            //Trace.Fail("unknown getter: " + getterName);
         }
 
         if (replacementExpression != null)

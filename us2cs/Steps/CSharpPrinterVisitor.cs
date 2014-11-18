@@ -427,7 +427,11 @@ class CSharpPrinterVisitor : TextEmitter
     // a hack to remove super()
     void ProcessSuperConstructor(Method node)
     {
-        if (node.Body.Statements.Count == 0) return;
+        if (node == null
+            || node.Body == null
+            || node.Body.Statements == null
+            || node.Body.Statements.Count == 0
+            || node.Body.Statements[0] == null) return;
         var baseInvokeStmt = node.Body.Statements[0] as ExpressionStatement;
         var baseInvokeExpr = baseInvokeStmt.Expression as MethodInvocationExpression;
         if (baseInvokeExpr == null) return;
@@ -472,10 +476,13 @@ class CSharpPrinterVisitor : TextEmitter
 
         WriteParameterList(node.Parameters);
 
+        // temprate hack
+        /*
         if (ct == CallableType.Constructor)
         {
             ProcessSuperConstructor(node);
         }
+        */
 
         Trace.Assert(node.ReturnTypeAttributes.Count == 0, "shouldnt get return type attributes");
     }
@@ -617,19 +624,26 @@ class CSharpPrinterVisitor : TextEmitter
         WriteIndented();
         WriteKeyword("break;");
         WriteLine();
-        Trace.Assert(node.Modifier == null, "shouldn't get modifier");
+        // temporate hack
+        //Trace.Assert(node.Modifier == null, "shouldn't get modifier");
     }
 
     public override void OnCallableDefinition(CallableDefinition node)
     {
+        return;  // temporate hack
+        /*
         // BOO specific feature
         throw new NotImplementedException();
+        */
     }
 
     public override void OnCallableTypeReference(CallableTypeReference node)
     {
+        return;  // temporate hack
+        /*
         // BOO specific feature
         throw new NotImplementedException();
+        */
     }
 
     public override void OnCastExpression(CastExpression node)
@@ -892,8 +906,12 @@ class CSharpPrinterVisitor : TextEmitter
 
     public override void OnGotoStatement(GotoStatement node)
     {
+        // temporate hack, seems there's really gotos
+        return;
+        /*
         // US don't have goto
         throw new NotImplementedException();
+        */
     }
 
     public override void OnHashLiteralExpression(HashLiteralExpression node)

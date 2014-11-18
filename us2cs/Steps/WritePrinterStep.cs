@@ -35,6 +35,13 @@ class WritePrinterStep : AbstractCompilerStep
 
         foreach (var module in CompileUnit.Modules)
         {
+            // don't really know how this happens
+            if (module.LexicalInfo.FileName == null)
+            {
+                Console.WriteLine("module is missing filename: {0}", module.Name);
+                continue;
+            }
+
             var fileInfo = new FileInfo(module.LexicalInfo.FileName);
             var relateivePath = fileInfo.FullName.Substring(rootDirInfo.FullName.Length+1);
 

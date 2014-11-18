@@ -13,9 +13,13 @@ static class Entry
         Console.WriteLine("woot");
         Console.WriteLine(System.AppDomain.CurrentDomain.FriendlyName);
         Console.WriteLine("woot");
+        Console.WriteLine(args.Length);
+        Console.WriteLine(args[0]);
+        Console.WriteLine(args[1]);
+
 
         var builder = new CompilerBuilder();
-        var compiler = builder.SetupUnityProject(args[1], args.Skip(2).ToArray())
+        var compiler = builder.SetupUnityProject(args[0], args[1])
             .BuildCompiler()
             .AdjustWriteCSharpPipeline()
             //.AdjustWriteBooPipeline()
